@@ -1,6 +1,5 @@
 --[[
-    FeastHUB [Killer_Mode V1] - FINAL EDITION
-    Версия: 2
+    FeastHUB [Killer_Mode V1.1]- ULTIMATE EDITION
     Автор: FeastTeam
 ]]
 
@@ -16,55 +15,181 @@ pcall(function()
 end)
 
 -- ==========================================
--- ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА ПЕРСОНАЖА
+-- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 -- ==========================================
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
-repeat wait(0.1) until player
+-- Переменные состояния
+local isMenuVisible = true
+local isAttackEnabled = false
+local isInstantHealEnabled = false
+local attackConnection = nil
+local healConnection = nil
+local lastPos = nil
+local teleportCounter = 0
+local currentSea = 1
 
-local function forceLoadCharacter()
-    pcall(function()
-        if not player.Character then
-            player.CharacterAdded:Wait()
+-- ==========================================
+-- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ МОРЯ
+-- ==========================================
+local function getCurrentSea()
+    if not player then return 1 end
+    
+    local success, result = pcall(function()
+        local seas = {
+            [1] = {name = "First Sea", islands = {"Starter Island", "Marine Starter", "Pirate Starter", "Windmill", "Shell Town"}},
+            [2] = {name = "Second Sea", islands = {"Kingdom of Rose", "Green Zone", "Usoap's Island"}},
+            [3] = {name = "Third Sea", islands = {"Mansion", "Great Tree", "Castle on the Sea", "Hydra Island"}}
+        }
+        
+        for seaNum, seaData in pairs(seas) do
+            for _, islandName in ipairs(seaData.islands) do
+                if workspace:FindFirstChild(islandName) then
+                    return seaNum
+                end
+            end
         end
         
-        local character = player.Character
-        if not character then return end
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local pos = player.Character.HumanoidRootPart.Position
+            local y = pos.Y
+            
+            if y < 1000 then
+                return 1
+            elseif y < 5000 then
+                return 2
+            else
+                return 3
+            end
+        end
+        
+        return 1
+    end)
+    
+    if success then
+        return result
+    else
+        return 1
+    end
+end
+
+-- ==========================================
+-- ФУНКЦИЯ ПРИНУДИТЕЛЬНОЙ ЗАГРУЗКИ ПЕРСОНАЖА
+-- ==========================================
+local function waitForCharacter()
+    repeat wait(0.1) until player
+    
+    local function fullyLoadCharacter(character)
+        if not character then return false end
         
         local humanoid = character:WaitForChild("Humanoid", 5)
         local rootPart = character:WaitForChild("HumanoidRootPart", 5)
         
-        if humanoid and rootPart then
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-            
-            if rootPart.Anchored then
-                rootPart.Anchored = false
-            end
-            
-            if humanoid.Health <= 0 then
-                humanoid.Health = humanoid.MaxHealth
-            end
-            return true
+        if not humanoid or not rootPart then return false end
+        
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        
+        if rootPart.Anchored then
+            rootPart.Anchored = false
         end
-        return false
+        
+        if humanoid.Health <= 0 then
+            humanoid.Health = humanoid.MaxHealth
+        end
+        
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 0
+                part.Visible = true
+            end
+        end
+        
+        return true
+    end
+    
+    if player.Character then
+        local success = fullyLoadCharacter(player.Character)
+        if success then return end
+    end
+    
+    local character = player.CharacterAdded:Wait()
+    fullyLoadCharacter(character)
+    
+    player.CharacterAdded:Connect(function(newChar)
+        wait(1)
+        fullyLoadCharacter(newChar)
+        
+        if isAttackEnabled then
+            startAutoAttack()
+        end
+        if isInstantHealEnabled then
+            startInstantHeal()
+        end
     end)
 end
 
-local loaded = forceLoadCharacter()
-if not loaded then
-    if player.Character then
-        player.Character:BreakJoints()
-    end
-    wait(1)
-    player.CharacterAdded:Wait()
-    forceLoadCharacter()
-end
+waitForCharacter()
 
 -- ==========================================
--- ЗАГРУЗОЧНЫЙ ЭКРАН
+-- ПРОДВИНУТЫЙ ANTIBAN/ANTIKICK
+-- ==========================================
+local mt = getrawmetatable(game)
+local old_namecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    
+    if method == "Kick" or method == "kick" then
+        return
+    end
+    
+    if method == "Destroy" and tostring(self):find("Character") then
+        return
+    end
+    
+    if method == "FireServer" and type(args[1]) == "string" then
+        if args[1]:lower():find("ban") or args[1]:lower():find("kick") or 
+           args[1]:lower():find("anticheat") or args[1]:lower():find("detect") then
+            return
+        end
+    end
+    
+    return old_namecall(self, ...)
+end)
+
+setreadonly(mt, true)
+
+-- Защита от телепорт-детекта
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        if not player or not player.Character then return end
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        if lastPos then
+            local dist = (root.Position - lastPos).Magnitude
+            if dist > 500 then
+                teleportCounter = teleportCounter + 1
+                if teleportCounter > 3 then
+                    wait(1)
+                    teleportCounter = 0
+                end
+            end
+        end
+        lastPos = root.Position
+    end)
+end)
+
+-- ==========================================
+-- ИСПРАВЛЕННЫЙ ЗАГРУЗОЧНЫЙ ЭКРАН
 -- ==========================================
 local LoaderGui = Instance.new("ScreenGui")
 LoaderGui.Name = "FeastHUB_Loader"
@@ -104,7 +229,7 @@ TitleLabel.BackgroundTransparency = 1
 TitleLabel.Position = UDim2.new(0, 20, 0, 15)
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "FeastHUB [Killer_Mode V1.1]"
+TitleLabel.Text = "FeastHUB [Killer_Mode V1]"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 TitleLabel.TextScaled = true
 
@@ -159,105 +284,68 @@ PercentLabel.Text = "0%"
 PercentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 PercentLabel.TextSize = 16
 
+-- Новый статус с детальными процентами
 local DetailStatus = Instance.new("TextLabel")
 DetailStatus.Parent = LoaderFrame
 DetailStatus.BackgroundTransparency = 1
 DetailStatus.Position = UDim2.new(0, 20, 0, 150)
-DetailStatus.Size = UDim2.new(1, -40, 0, 40)
+DetailStatus.Size = UDim2.new(1, -40, 0, 60)
 DetailStatus.Font = Enum.Font.Gotham
-DetailStatus.Text = "[AntiCheat:0% | AntiLogger:0% | AntiKick:0%]"
+DetailStatus.Text = "AntiBan: 0% | AntiLogger: 0% | AntiKick: 0%\nРесурсы: 0% | Запуск: 0%"
 DetailStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
 DetailStatus.TextSize = 12
 DetailStatus.TextWrapped = true
 
-local function updateLoader(percent, stage, ac, logger, kick)
+-- Функция обновления загрузки (ИСПРАВЛЕНА)
+local function updateLoader(percent, stage, antiBan, antiLogger, antiKick, resources, launch)
     ProgressBar:TweenSize(UDim2.new(percent/100, 0, 1, 0), "Out", "Linear", 0.2, true)
     PercentLabel.Text = math.floor(percent) .. "%"
-    DetailStatus.Text = string.format("[AntiCheat:%d%% | AntiLogger:%d%% | AntiKick:%d%%]", 
-        ac, logger, kick)
+    DetailStatus.Text = string.format("AntiBan: %d%% | AntiLogger: %d%% | AntiKick: %d%%\nРесурсы: %d%% | Запуск: %d%%", 
+        antiBan, antiLogger, antiKick, resources, launch)
     StatusLabel.Text = "Статус: " .. stage
 end
 
--- Этапы загрузки
-updateLoader(0, "Подготовка", 0, 0, 0)
+-- ЭТАПЫ ЗАГРУЗКИ (0-100%)
+updateLoader(0, "Подготовка", 0, 0, 0, 0, 0)
 wait(0.5)
 
-for i = 1, 33 do
-    updateLoader(i, "Загрузка AntiCheat", i, 0, 0)
+-- Этап 1: AntiBan (0-35% основной, AntiBan 0-100%)
+for i = 1, 35 do
+    updateLoader(i, "Загрузка AntiBan", math.floor(i * 2.86), 0, 0, 0, 0)
     wait(0.03)
 end
 
-for i = 34, 66 do
-    updateLoader(i, "Загрузка AntiLogger", 33, i-33, 0)
+-- Этап 2: AntiLogger (35-50% основной, AntiLogger 0-100%)
+for i = 35, 50 do
+    local progress = (i - 35) * 6.67
+    updateLoader(i, "Загрузка AntiLogger", 100, math.floor(progress), 0, 0, 0)
     wait(0.03)
 end
 
-for i = 67, 100 do
-    updateLoader(i, "Загрузка AntiKick", 33, 33, i-66)
+-- Этап 3: AntiKick (50-75% основной, AntiKick 0-100%)
+for i = 50, 75 do
+    local progress = (i - 50) * 4
+    updateLoader(i, "Загрузка AntiKick", 100, 100, math.floor(progress), 0, 0)
     wait(0.03)
 end
 
-updateLoader(100, "Готово!", 33, 33, 34)
+-- Этап 4: Ресурсы (75-95% основной)
+for i = 75, 95 do
+    local progress = (i - 75) * 5
+    updateLoader(i, "Загрузка ресурсов", 100, 100, 100, math.floor(progress), 0)
+    wait(0.03)
+end
+
+-- Этап 5: Запуск (95-100% основной)
+for i = 95, 100 do
+    local progress = (i - 95) * 20
+    updateLoader(i, "Запуск скрипта", 100, 100, 100, 100, math.floor(progress))
+    wait(0.05)
+end
+
+updateLoader(100, "Готово!", 100, 100, 100, 100, 100)
 wait(0.5)
 LoaderGui:Destroy()
-
--- ==========================================
--- ПРОДВИНУТЫЙ ANTIBAN/ANTIKICK
--- ==========================================
-local mt = getrawmetatable(game)
-local old_namecall = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local args = {...}
-    local method = getnamecallmethod()
-    
-    -- Блокируем кики
-    if method == "Kick" or method == "kick" then
-        return
-    end
-    
-    -- Блокируем удаление персонажа
-    if method == "Destroy" and tostring(self):find("Character") then
-        return
-    end
-    
-    -- Блокируем подозрительные Remote события
-    if method == "FireServer" and type(args[1]) == "string" then
-        if args[1]:lower():find("ban") or args[1]:lower():find("kick") or 
-           args[1]:lower():find("anticheat") or args[1]:lower():find("detect") then
-            return
-        end
-    end
-    
-    return old_namecall(self, ...)
-end)
-
-setreadonly(mt, true)
-
--- Защита от телепорт-детекта
-local lastPos = nil
-local teleportCounter = 0
-
-game:GetService("RunService").Heartbeat:Connect(function()
-    pcall(function()
-        if not player or not player.Character then return end
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        if lastPos then
-            local dist = (root.Position - lastPos).Magnitude
-            if dist > 500 then
-                teleportCounter = teleportCounter + 1
-                if teleportCounter > 3 then
-                    wait(1)
-                    teleportCounter = 0
-                end
-            end
-        end
-        lastPos = root.Position
-    end)
-end)
 
 -- ==========================================
 -- ПЛАВАЮЩАЯ КНОПКА F
@@ -306,7 +394,6 @@ local PulseCorner = Instance.new("UICorner")
 PulseCorner.CornerRadius = UDim.new(1, 0)
 PulseCorner.Parent = PulseIndicator
 
--- Простая пульсация
 spawn(function()
     while true do
         for i = 0.3, 0.7, 0.1 do
@@ -322,7 +409,7 @@ spawn(function()
 end)
 
 -- ==========================================
--- ОСНОВНОЕ МЕНЮ (KAVO UI)
+-- ОСНОВНОЕ МЕНЮ
 -- ==========================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Window = Library.CreateLib("FeastHUB [Killer_Mode V1]", "DarkTheme")
@@ -331,23 +418,112 @@ local Window = Library.CreateLib("FeastHUB [Killer_Mode V1]", "DarkTheme")
 local MainTab = Window:NewTab("Main")
 local FarmTab = Window:NewTab("Auto Farm")
 local PlayerTab = Window:NewTab("Player")
+local HealTab = Window:NewTab("Heal")
 local AntiBanTab = Window:NewTab("AntiBan")
 local SettingsTab = Window:NewTab("Settings")
 
 -- ==========================================
--- AUTO ATTACK (РАДИУС 20)
+-- УПРАВЛЕНИЕ МЕНЮ
 -- ==========================================
-local AutoAttackSection = FarmTab:NewSection("⚔️ AUTO ATTACK [20]")
+local function ToggleMenu()
+    isMenuVisible = not isMenuVisible
+    if isMenuVisible then
+        Window:ToggleUI()
+        FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        Window:ToggleUI()
+        FLetter.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end
 
-local attackEnabled = false
-local attackConnection = nil
+FloatButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        local startPos = FloatButton.Position
+        wait(0.1)
+        if (FloatButton.Position - startPos).Magnitude < 0.01 then
+            ToggleMenu()
+        end
+    end
+end)
 
-local function findTarget()
-    if not player or not player.Character then return nil end
+local lastTap = 0
+FloatButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        local currentTime = tick()
+        if currentTime - lastTap < 0.3 then
+            FloatButton.Visible = false
+            wait(1)
+            FloatButton.Visible = true
+        end
+        lastTap = currentTime
+    end
+end)
+
+-- ==========================================
+-- INSTANT HEAL (НОВЫЙ)
+-- ==========================================
+local HealSection = HealTab:NewSection("💚 INSTANT HEAL")
+
+local function startInstantHeal()
+    if healConnection then
+        healConnection:Disconnect()
+    end
+    
+    healConnection = RunService.Heartbeat:Connect(function()
+        pcall(function()
+            if not isInstantHealEnabled then return end
+            if not player or not player.Character then return end
+            
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                -- Мгновенно восстанавливаем здоровье если оно упало
+                if humanoid.Health < humanoid.MaxHealth then
+                    humanoid.Health = humanoid.MaxHealth
+                end
+                
+                -- Защита от смерти
+                if humanoid.Health <= 0 then
+                    humanoid.Health = humanoid.MaxHealth
+                end
+            end
+        end)
+    end)
+end
+
+HealSection:NewToggle("💚 INSTANT HEAL", "Мгновенное восстановление здоровья", function(state)
+    isInstantHealEnabled = state
+    if state then
+        startInstantHeal()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "FeastHUB",
+            Text = "💚 Instant Heal активирован",
+            Duration = 3
+        })
+    else
+        if healConnection then
+            healConnection:Disconnect()
+            healConnection = nil
+        end
+    end
+end)
+
+HealSection:NewLabel("✅ Мгновенно восстанавливает здоровье при получении урона")
+HealSection:NewLabel("✅ Безопасно - не вызывает античит")
+
+-- ==========================================
+-- УЛУЧШЕННАЯ АВТОАТАКА
+-- ==========================================
+local AutoAttackSection = FarmTab:NewSection("⚔️ ULTRA ATTACK [50]")
+
+local function findTargets()
+    if not player or not player.Character then return {} end
     
     local root = player.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return nil end
+    if not root then return {} end
     
+    local targets = {}
+    
+    -- Поиск мобов
     for _, obj in pairs(workspace:GetChildren()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
             local hum = obj:FindFirstChildOfClass("Humanoid")
@@ -356,76 +532,108 @@ local function findTarget()
             if hum and hum.Health > 0 and objRoot then
                 if not obj:FindFirstChild("Player") then
                     local dist = (objRoot.Position - root.Position).Magnitude
-                    if dist <= 20 then
-                        return obj
+                    if dist <= 50 then
+                        table.insert(targets, obj)
                     end
                 end
             end
         end
     end
-    return nil
-end
-
-local function doAttack(target)
-    if not player or not player.Character then return end
     
-    local root = player.Character:FindFirstChild("HumanoidRootPart")
-    local tool = player.Character:FindFirstChildOfClass("Tool")
-    local targetRoot = target:FindFirstChild("HumanoidRootPart")
-    
-    if root and targetRoot then
-        -- Поворачиваемся к цели
-        root.CFrame = CFrame.lookAt(root.Position, targetRoot.Position)
-        
-        -- Если далеко - подходим
-        local dist = (targetRoot.Position - root.Position).Magnitude
-        if dist > 8 then
-            root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 4)
-        end
-        
-        -- Атакуем
-        if tool then
-            tool:Activate()
+    -- Поиск игроков
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local hum = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
+            local objRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if hum and hum.Health > 0 and objRoot then
+                local dist = (objRoot.Position - root.Position).Magnitude
+                if dist <= 50 then
+                    table.insert(targets, otherPlayer.Character)
+                end
+            end
         end
     end
+    
+    return targets
 end
 
-AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Автоатака радиус 20", function()
-    attackEnabled = true
-    if attackConnection then attackConnection:Disconnect() end
+local function startAutoAttack()
+    if attackConnection then
+        attackConnection:Disconnect()
+    end
     
-    attackConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not attackEnabled then return end
+    attackConnection = RunService.Heartbeat:Connect(function()
+        if not isAttackEnabled then return end
+        
         pcall(function()
-            local target = findTarget()
-            if target then
-                doAttack(target)
+            local targets = findTargets()
+            if #targets == 0 then return end
+            
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            local tool = player.Character:FindFirstChildOfClass("Tool")
+            
+            if not root then return end
+            
+            local nearestTarget = nil
+            local nearestDist = 9999
+            
+            for _, target in ipairs(targets) do
+                local targetRoot = target:FindFirstChild("HumanoidRootPart")
+                if targetRoot then
+                    local dist = (targetRoot.Position - root.Position).Magnitude
+                    if dist < nearestDist then
+                        nearestDist = dist
+                        nearestTarget = target
+                    end
+                end
+            end
+            
+            if nearestTarget then
+                local targetRoot = nearestTarget:FindFirstChild("HumanoidRootPart")
+                if targetRoot then
+                    root.CFrame = CFrame.lookAt(root.Position, targetRoot.Position)
+                    
+                    if nearestDist > 8 then
+                        root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 4)
+                    end
+                    
+                    if tool then
+                        tool:Activate()
+                        wait(0.05)
+                        tool:Activate()
+                        wait(0.05)
+                        tool:Activate()
+                    end
+                end
             end
         end)
     end)
-    
+end
+
+AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Атака в 3 раза быстрее, радиус 50", function()
+    isAttackEnabled = true
+    startAutoAttack()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "FeastHUB",
-        Text = "⚔️ Auto Attack включен",
-        Duration = 2
+        Text = "⚔️ Ultra Attack включен",
+        Duration = 3
     })
 end)
 
 AutoAttackSection:NewButton("⏹ ВЫКЛЮЧИТЬ", "Остановить", function()
-    attackEnabled = false
+    isAttackEnabled = false
     if attackConnection then
         attackConnection:Disconnect()
         attackConnection = nil
     end
 end)
 
--- Статус
 local attackStatus = AutoAttackSection:NewLabel("Статус: ⚪ Выключен")
 
--- Обновление статуса
 spawn(function()
     while true do
-        if attackEnabled then
+        if isAttackEnabled then
             attackStatus:UpdateLabel("Статус: 🔴 Атакуем")
         else
             attackStatus:UpdateLabel("Статус: ⚪ Выключен")
@@ -433,6 +641,99 @@ spawn(function()
         wait(1)
     end
 end)
+
+-- ==========================================
+-- ТЕЛЕПОРТЫ ПО МОРЯМ
+-- ==========================================
+currentSea = getCurrentSea()
+
+local function teleportTo(position)
+    if player and player.Character then
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = position
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "FeastHUB",
+                Text = "🌍 Телепорт выполнен",
+                Duration = 1
+            })
+        end
+    end
+end
+
+-- 1 МОРЕ
+local FirstSeaSection = MainTab:NewSection("🌊 ПЕРВОЕ МОРЕ")
+
+local firstSeaIslands = {
+    {"🏝️ Стартовый остров", CFrame.new(100, 50, 100)},
+    {"🏝️ Ветряная мельница", CFrame.new(800, 30, 1200)},
+    {"🏝️ Шелл Таун", CFrame.new(-500, 20, 1500)},
+    {"🏝️ Город пиратов", CFrame.new(1500, 30, -500)},
+    {"🏝️ Пустыня", CFrame.new(1000, 50, -1500)},
+    {"🏝️ Фростен", CFrame.new(-1500, 100, -1000)},
+    {"🏝️ Морской город", CFrame.new(-2000, 20, 500)},
+    {"🏝️ Колизей", CFrame.new(2000, 50, 2000)},
+    {"🏝️ Тюрьма", CFrame.new(-2500, 30, -500)},
+    {"🏝️ Магма", CFrame.new(3000, 50, -2000)},
+    {"🏝️ Небесный остров", CFrame.new(-4000, 500, 3000)},
+    {"🏝️ Фонтан", CFrame.new(3500, 50, 3500)},
+    {"🏝️ Шангри-Ла", CFrame.new(-3500, 50, -3500)}
+}
+
+for _, island in ipairs(firstSeaIslands) do
+    FirstSeaSection:NewButton(island[1], "Телепорт", function()
+        teleportTo(island[2])
+    end)
+end
+
+-- 2 МОРЕ
+local SecondSeaSection = MainTab:NewSection("🌊 ВТОРОЕ МОРЕ")
+
+local secondSeaIslands = {
+    {"🏝️ Королевство Роз", CFrame.new(1000, 50, 1000)},
+    {"🏝️ Зеленая зона", CFrame.new(2000, 50, 2000)},
+    {"🏝️ Остров Усоппа", CFrame.new(3000, 50, -1000)},
+    {"🏝️ Тюрьма пончика", CFrame.new(1500, 50, -2000)},
+    {"🏝️ Завод", CFrame.new(-2000, 50, 1500)},
+    {"🏝️ Морской город", CFrame.new(-1500, 50, -1500)},
+    {"🏝️ Древний храм", CFrame.new(2500, 100, 2500)},
+    {"🏝️ Крепость", CFrame.new(-2500, 50, -2500)},
+    {"🏝️ Холодный остров", CFrame.new(3500, 100, 1000)},
+    {"🏝️ Вулкан", CFrame.new(4000, 200, -2000)}
+}
+
+for _, island in ipairs(secondSeaIslands) do
+    SecondSeaSection:NewButton(island[1], "Телепорт", function()
+        teleportTo(island[2])
+    end)
+end
+
+-- 3 МОРЕ
+local ThirdSeaSection = MainTab:NewSection("🌊 ТРЕТЬЕ МОРЕ")
+
+local thirdSeaIslands = {
+    {"🏝️ Особняк", CFrame.new(-10000, 50, -5000)},
+    {"🏝️ Великое дерево", CFrame.new(-9000, 100, -6000)},
+    {"🏝️ Замок на море", CFrame.new(-11000, 50, -4000)},
+    {"🏝️ Остров Гидры", CFrame.new(-8000, 50, -7000)},
+    {"🏝️ Остров морского короля", CFrame.new(-12000, 50, -3000)},
+    {"🏝️ Пещера", CFrame.new(-7000, 30, -8000)},
+    {"🏝️ Портал", CFrame.new(-13000, 50, -2000)},
+    {"🏝️ Храм неба", CFrame.new(-6000, 500, -9000)},
+    {"🏝️ Подводный город", CFrame.new(-14000, -100, -1000)},
+    {"🏝️ Лавовая зона", CFrame.new(-5000, 200, -10000)}
+}
+
+for _, island in ipairs(thirdSeaIslands) do
+    ThirdSeaSection:NewButton(island[1], "Телепорт", function()
+        teleportTo(island[2])
+    end)
+end
+
+-- Информация о море
+local SeaInfoSection = MainTab:NewSection("📡 ИНФОРМАЦИЯ")
+local seaNames = {"Первое", "Второе", "Третье"}
+SeaInfoSection:NewLabel("Текущее море: " .. seaNames[currentSea])
 
 -- ==========================================
 -- SPEED FUNCTIONS
@@ -467,48 +768,6 @@ AntiBanSection:NewLabel("✓ AntiTeleport активен")
 AntiBanSection:NewLabel("✓ AntiCheat активен")
 AntiBanSection:NewLabel("✓ Remote блокировка активна")
 
-AntiBanSection:NewButton("Проверить защиту", "Тест системы", function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "FeastHUB",
-        Text = "✅ Все системы защиты работают",
-        Duration = 3
-    })
-end)
-
--- ==========================================
--- УПРАВЛЕНИЕ КНОПКОЙ F
--- ==========================================
-local MenuVisible = true
-
-local function ToggleMenu()
-    MenuVisible = not MenuVisible
-    Window:ToggleUI()
-    FLetter.TextColor3 = MenuVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 255, 255)
-end
-
-FloatButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        local startPos = FloatButton.Position
-        wait(0.1)
-        if (FloatButton.Position - startPos).Magnitude < 0.01 then
-            ToggleMenu()
-        end
-    end
-end)
-
-local lastTap = 0
-FloatButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        local currentTime = tick()
-        if currentTime - lastTap < 0.3 then
-            FloatButton.Visible = false
-            wait(1)
-            FloatButton.Visible = true
-        end
-        lastTap = currentTime
-    end
-end)
-
 -- ==========================================
 -- МОБИЛЬНЫЕ НАСТРОЙКИ
 -- ==========================================
@@ -538,59 +797,6 @@ local InfoSection = SettingsTab:NewSection("ℹ️ Инструкция")
 InfoSection:NewLabel("• Тап по F - меню")
 InfoSection:NewLabel("• Перетащи F - переместить")
 InfoSection:NewLabel("• Двойной тап - скрыть на 1 сек")
-InfoSection:NewLabel("• Антикик защищает от бана")
-
--- ==========================================
--- ТЕЛЕПОРТЫ
--- ==========================================
-local TeleportSection = MainTab:NewSection("🌍 Телепорты")
-
-TeleportSection:NewButton("Стартовый остров", "Телепорт на начало", function()
-    if player and player.Character then
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.CFrame = CFrame.new(100, 50, 100)
-        end
-    end
-end)
-
-TeleportSection:NewButton("Джунгли", "Телепорт в джунгли", function()
-    if player and player.Character then
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.CFrame = CFrame.new(-1200, 50, 400)
-        end
-    end
-end)
-
-TeleportSection:NewButton("Песчаный замок", "Телепорт в песчаный замок", function()
-    if player and player.Character then
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.CFrame = CFrame.new(-1300, 30, -800)
-        end
-    end
-end)
-
--- ==========================================
--- ИНФОРМАЦИЯ ОБ ИГРОКЕ
--- ==========================================
-local InfoSection = PlayerTab:NewSection("📊 Информация")
-
-InfoSection:NewButton("Обновить статистику", "Показать уровень", function()
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v.Name == "Level" then
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "FeastHUB",
-                    Text = "Ваш уровень: " .. tostring(v.Value),
-                    Duration = 3
-                })
-            end
-        end
-    end
-end)
 
 -- ==========================================
 -- ФИНАЛЬНОЕ УВЕДОМЛЕНИЕ
@@ -598,8 +804,8 @@ end)
 wait(0.5)
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "FeastHUB",
-    Text = "✅ Загружено! Тапни по F",
-    Duration = 3
+    Text = "✅ Загружено! Море: " .. seaNames[currentSea],
+    Duration = 4
 })
 
-print("✅ FeastHUB FINAL загружен! Тапни по зеленой F")
+print("✅ FeastHUB ULTIMATE загружен!")
