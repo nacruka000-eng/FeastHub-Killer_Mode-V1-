@@ -1,5 +1,5 @@
 --[[
-    FeastHUB [Killer_Mode V1.2]
+    FeastHUB [Killer_Mode V1.2] - ULTIMATE EDITION
     Автор: FeastTeam
 ]]
 
@@ -22,6 +22,7 @@ local player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
 
 -- Переменные состояния
 local isMenuVisible = true
@@ -32,29 +33,19 @@ local healConnection = nil
 local lastPos = nil
 local teleportCounter = 0
 local currentSea = 1
+local Window = nil -- Будет инициализировано позже
 
 -- ==========================================
--- ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ПЕРСОНАЖА
+-- ОЖИДАНИЕ ЗАГРУЗКИ ПЕРСОНАЖА
 -- ==========================================
--- Просто ждем игрока, НЕ трогаем персонажа
 repeat wait(0.1) until player
 repeat wait(0.1) until player.Character
 repeat wait(0.1) until player.Character:FindFirstChild("Humanoid")
 repeat wait(0.1) until player.Character:FindFirstChild("HumanoidRootPart")
 
--- Убираем принудительную загрузку - она ломала персонажа!
--- Просто сохраняем ссылки
-local character = player.Character
-local humanoid = character:FindFirstChild("Humanoid")
-local rootPart = character:FindFirstChild("HumanoidRootPart")
-
 -- Следим за респавном
 player.CharacterAdded:Connect(function(newChar)
-    wait(1) -- Даем время на загрузку
-    character = newChar
-    humanoid = newChar:FindFirstChild("Humanoid")
-    rootPart = newChar:FindFirstChild("HumanoidRootPart")
-    
+    wait(1)
     -- Перезапускаем активные функции
     if isAttackEnabled and attackConnection then
         attackConnection:Disconnect()
@@ -199,7 +190,7 @@ TitleLabel.BackgroundTransparency = 1
 TitleLabel.Position = UDim2.new(0, 20, 0, 15)
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "FeastHUB [Killer_Mode V1]"
+TitleLabel.Text = "FeastHUB [Killer_Mode V1.2]"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 TitleLabel.TextScaled = true
 
@@ -209,7 +200,7 @@ SubLabel.BackgroundTransparency = 1
 SubLabel.Position = UDim2.new(0, 20, 0, 55)
 SubLabel.Size = UDim2.new(1, -40, 0, 25)
 SubLabel.Font = Enum.Font.Gotham
-SubLabel.Text = "запуск скрипта..."
+SubLabel.Text = "Запуск скрипта..."
 SubLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 SubLabel.TextScaled = true
 
@@ -254,7 +245,6 @@ PercentLabel.Text = "0%"
 PercentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 PercentLabel.TextSize = 16
 
--- Новый статус с детальными процентами
 local DetailStatus = Instance.new("TextLabel")
 DetailStatus.Parent = LoaderFrame
 DetailStatus.BackgroundTransparency = 1
@@ -266,7 +256,6 @@ DetailStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
 DetailStatus.TextSize = 12
 DetailStatus.TextWrapped = true
 
--- Функция обновления загрузки
 local function updateLoader(percent, stage, antiBan, antiLogger, antiKick, resources, launch)
     ProgressBar:TweenSize(UDim2.new(percent/100, 0, 1, 0), "Out", "Linear", 0.2, true)
     PercentLabel.Text = math.floor(percent) .. "%"
@@ -275,38 +264,32 @@ local function updateLoader(percent, stage, antiBan, antiLogger, antiKick, resou
     StatusLabel.Text = "Статус: " .. stage
 end
 
--- ЭТАПЫ ЗАГРУЗКИ (0-100%)
 updateLoader(0, "Подготовка", 0, 0, 0, 0, 0)
 wait(0.5)
 
--- Этап 1: AntiBan (0-35% основной, AntiBan 0-100%)
 for i = 1, 35 do
     updateLoader(i, "Загрузка AntiBan", math.floor(i * 2.86), 0, 0, 0, 0)
     wait(0.03)
 end
 
--- Этап 2: AntiLogger (35-50% основной, AntiLogger 0-100%)
 for i = 35, 50 do
     local progress = (i - 35) * 6.67
     updateLoader(i, "Загрузка AntiLogger", 100, math.floor(progress), 0, 0, 0)
     wait(0.03)
 end
 
--- Этап 3: AntiKick (50-75% основной, AntiKick 0-100%)
 for i = 50, 75 do
     local progress = (i - 50) * 4
     updateLoader(i, "Загрузка AntiKick", 100, 100, math.floor(progress), 0, 0)
     wait(0.03)
 end
 
--- Этап 4: Ресурсы (75-95% основной)
 for i = 75, 95 do
     local progress = (i - 75) * 5
     updateLoader(i, "Загрузка ресурсов", 100, 100, 100, math.floor(progress), 0)
     wait(0.03)
 end
 
--- Этап 5: Запуск (95-100% основной)
 for i = 95, 100 do
     local progress = (i - 95) * 20
     updateLoader(i, "Запуск скрипта", 100, 100, 100, 100, math.floor(progress))
@@ -379,10 +362,13 @@ spawn(function()
 end)
 
 -- ==========================================
--- ОСНОВНОЕ МЕНЮ
+-- ОСНОВНОЕ МЕНЮ (ПЕРЕТАСКИВАЕТСЯ)
 -- ==========================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("FeastHUB [Killer_Mode V1]", "DarkTheme")
+Window = Library.CreateLib("FeastHUB [Killer_Mode V1]", "DarkTheme")
+
+-- Делаем меню перетаскиваемым
+Window.Draggable = true
 
 -- Вкладки
 local MainTab = Window:NewTab("Main")
@@ -393,7 +379,7 @@ local AntiBanTab = Window:NewTab("AntiBan")
 local SettingsTab = Window:NewTab("Settings")
 
 -- ==========================================
--- УПРАВЛЕНИЕ МЕНЮ
+-- УПРАВЛЕНИЕ МЕНЮ (ИСПРАВЛЕНО)
 -- ==========================================
 local function ToggleMenu()
     isMenuVisible = not isMenuVisible
@@ -479,49 +465,56 @@ HealSection:NewLabel("✅ Мгновенно восстанавливает зд
 HealSection:NewLabel("✅ Безопасно - не вызывает античит")
 
 -- ==========================================
--- УЛУЧШЕННАЯ АВТОАТАКА
+-- ИСПРАВЛЕННАЯ АВТОАТАКА (ВСЕ ЦЕЛИ)
 -- ==========================================
-local AutoAttackSection = FarmTab:NewSection("⚔️ ULTRA ATTACK [50]")
+local AutoAttackSection = FarmTab:NewSection("⚔️ ULTRA ATTACK [ВСЕ ЦЕЛИ]")
 
-local function findTargets()
+local function findAllTargets()
     if not player or not player.Character then return {} end
     
     local root = player.Character:FindFirstChild("HumanoidRootPart")
     if not root then return {} end
     
     local targets = {}
+    local checked = {}
     
-    -- Поиск мобов
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-            local hum = obj:FindFirstChildOfClass("Humanoid")
-            local objRoot = obj:FindFirstChild("HumanoidRootPart")
+    -- Поиск ВСЕХ существ с Humanoid (мобы, боссы, игроки)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if not checked[obj] then
+            checked[obj] = true
             
-            if hum and hum.Health > 0 and objRoot then
-                if not obj:FindFirstChild("Player") then
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                local hum = obj:FindFirstChildOfClass("Humanoid")
+                local objRoot = obj:FindFirstChild("HumanoidRootPart")
+                
+                if hum and hum.Health > 0 and objRoot then
+                    -- Проверяем расстояние
                     local dist = (objRoot.Position - root.Position).Magnitude
                     if dist <= 50 then
-                        table.insert(targets, obj)
+                        -- Определяем тип цели
+                        local targetType = "моб"
+                        if obj:FindFirstChild("Player") then
+                            targetType = "игрок"
+                        elseif obj:FindFirstChild("Boss") or obj.Name:find("Boss") then
+                            targetType = "босс"
+                        end
+                        
+                        table.insert(targets, {
+                            obj = obj,
+                            root = objRoot,
+                            dist = dist,
+                            type = targetType
+                        })
                     end
                 end
             end
         end
     end
     
-    -- Поиск игроков
-    for _, otherPlayer in pairs(Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character then
-            local hum = otherPlayer.Character:FindFirstChildOfClass("Humanoid")
-            local objRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
-            
-            if hum and hum.Health > 0 and objRoot then
-                local dist = (objRoot.Position - root.Position).Magnitude
-                if dist <= 50 then
-                    table.insert(targets, otherPlayer.Character)
-                end
-            end
-        end
-    end
+    -- Сортируем по расстоянию
+    table.sort(targets, function(a, b)
+        return a.dist < b.dist
+    end)
     
     return targets
 end
@@ -531,11 +524,19 @@ local function startAutoAttack()
         attackConnection:Disconnect()
     end
     
+    local lastAttack = 0
+    local attackSpeed = 0.1 -- 3x скорость (обычно 0.3)
+    
     attackConnection = RunService.Heartbeat:Connect(function()
         if not isAttackEnabled then return end
         
         pcall(function()
-            local targets = findTargets()
+            if not player or not player.Character then return end
+            
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            if not humanoid or humanoid.Health <= 0 then return end
+            
+            local targets = findAllTargets()
             if #targets == 0 then return end
             
             local root = player.Character:FindFirstChild("HumanoidRootPart")
@@ -543,35 +544,39 @@ local function startAutoAttack()
             
             if not root then return end
             
-            local nearestTarget = nil
-            local nearestDist = 9999
+            -- Берем ближайшую цель
+            local target = targets[1]
+            local targetRoot = target.root
+            local targetObj = target.obj
             
-            for _, target in ipairs(targets) do
-                local targetRoot = target:FindFirstChild("HumanoidRootPart")
-                if targetRoot then
-                    local dist = (targetRoot.Position - root.Position).Magnitude
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        nearestTarget = target
-                    end
-                end
+            -- Поворачиваемся к цели
+            root.CFrame = CFrame.lookAt(root.Position, targetRoot.Position)
+            
+            -- Подходим если далеко
+            if target.dist > 8 then
+                root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 4)
             end
             
-            if nearestTarget then
-                local targetRoot = nearestTarget:FindFirstChild("HumanoidRootPart")
-                if targetRoot then
-                    root.CFrame = CFrame.lookAt(root.Position, targetRoot.Position)
+            -- Атакуем с увеличенной скоростью
+            local currentTime = tick()
+            if currentTime - lastAttack > attackSpeed then
+                if tool then
+                    -- Активируем оружие
+                    tool:Activate()
                     
-                    if nearestDist > 8 then
-                        root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 4)
+                    -- Дополнительные атаки для скорости
+                    for i = 1, 3 do
+                        tool:Activate()
+                        wait(0.01)
                     end
                     
-                    if tool then
-                        tool:Activate()
-                        wait(0.05)
-                        tool:Activate()
-                        wait(0.05)
-                        tool:Activate()
+                    lastAttack = currentTime
+                    
+                    -- Визуальный эффект
+                    if target.type == "босс" then
+                        print("⚔️ Атакуем босса: " .. targetObj.Name)
+                    elseif target.type == "игрок" then
+                        print("⚔️ Атакуем игрока: " .. targetObj.Name)
                     end
                 end
             end
@@ -579,12 +584,12 @@ local function startAutoAttack()
     end)
 end
 
-AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Атака в 3 раза быстрее, радиус 50", function()
+AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ ULTRA ATTACK", "Атакует ВСЕХ: мобы, боссы, игроки", function()
     isAttackEnabled = true
     startAutoAttack()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "FeastHUB",
-        Text = "⚔️ Ultra Attack включен",
+        Text = "⚔️ Ultra Attack включен (3x, все цели)",
         Duration = 3
     })
 end)
@@ -602,7 +607,7 @@ local attackStatus = AutoAttackSection:NewLabel("Статус: ⚪ Выключ�
 spawn(function()
     while true do
         if isAttackEnabled then
-            attackStatus:UpdateLabel("Статус: 🔴 Атакуем")
+            attackStatus:UpdateLabel("Статус: 🔴 Атакуем (все цели)")
         else
             attackStatus:UpdateLabel("Статус: ⚪ Выключен")
         end
@@ -611,22 +616,39 @@ spawn(function()
 end)
 
 -- ==========================================
--- ТЕЛЕПОРТЫ ПО МОРЯМ
+-- ИСПРАВЛЕННЫЕ ТЕЛЕПОРТЫ
 -- ==========================================
 currentSea = getCurrentSea()
 
-local function teleportTo(position)
-    if player and player.Character then
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.CFrame = position
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "FeastHUB",
-                Text = "🌍 Телепорт выполнен",
-                Duration = 1
-            })
-        end
+local function safeTeleport(position)
+    if not player or not player.Character then 
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "FeastHUB",
+            Text = "❌ Персонаж не найден",
+            Duration = 2
+        })
+        return
     end
+    
+    local root = player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "FeastHUB",
+            Text = "❌ RootPart не найден",
+            Duration = 2
+        })
+        return
+    end
+    
+    -- Безопасный телепорт
+    pcall(function()
+        root.CFrame = position
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "FeastHUB",
+            Text = "🌍 Телепорт выполнен",
+            Duration = 1
+        })
+    end)
 end
 
 -- 1 МОРЕ
@@ -650,7 +672,7 @@ local firstSeaIslands = {
 
 for _, island in ipairs(firstSeaIslands) do
     FirstSeaSection:NewButton(island[1], "Телепорт", function()
-        teleportTo(island[2])
+        safeTeleport(island[2])
     end)
 end
 
@@ -672,7 +694,7 @@ local secondSeaIslands = {
 
 for _, island in ipairs(secondSeaIslands) do
     SecondSeaSection:NewButton(island[1], "Телепорт", function()
-        teleportTo(island[2])
+        safeTeleport(island[2])
     end)
 end
 
@@ -694,7 +716,7 @@ local thirdSeaIslands = {
 
 for _, island in ipairs(thirdSeaIslands) do
     ThirdSeaSection:NewButton(island[1], "Телепорт", function()
-        teleportTo(island[2])
+        safeTeleport(island[2])
     end)
 end
 
@@ -702,6 +724,15 @@ end
 local SeaInfoSection = MainTab:NewSection("📡 ИНФОРМАЦИЯ")
 local seaNames = {"Первое", "Второе", "Третье"}
 SeaInfoSection:NewLabel("Текущее море: " .. seaNames[currentSea])
+
+SeaInfoSection:NewButton("🔄 ОБНОВИТЬ МОРЕ", "Переопределить текущее море", function()
+    currentSea = getCurrentSea()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "FeastHUB",
+        Text = "🌊 Море: " .. seaNames[currentSea],
+        Duration = 2
+    })
+end)
 
 -- ==========================================
 -- SPEED FUNCTIONS
@@ -761,10 +792,22 @@ MobileSection:NewButton("Кнопка вправо", "Переместить", f
     FloatButton:TweenPosition(UDim2.new(1, -70, 0.5, -25), "Out", "Linear", 0.3)
 end)
 
+MobileSection:NewButton("🔄 СБРОСИТЬ МЕНЮ", "Восстановить меню если пропало", function()
+    if Window then
+        Window:ToggleUI()
+        wait(0.1)
+        Window:ToggleUI()
+        FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
+        isMenuVisible = true
+    end
+end)
+
 local InfoSection = SettingsTab:NewSection("ℹ️ Инструкция")
-InfoSection:NewLabel("• Тап по F - меню")
-InfoSection:NewLabel("• Перетащи F - переместить")
+InfoSection:NewLabel("• Тап по F - открыть/закрыть меню")
+InfoSection:NewLabel("• Перетащи F - переместить кнопку")
 InfoSection:NewLabel("• Двойной тап - скрыть на 1 сек")
+InfoSection:NewLabel("• Меню можно перетаскивать")
+InfoSection:NewLabel("• При закрытии функции продолжают работу")
 
 -- ==========================================
 -- ФИНАЛЬНОЕ УВЕДОМЛЕНИЕ
@@ -776,4 +819,4 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
     Duration = 4
 })
 
-print("✅ FeastHUB ULTIMATE загружен!")
+print("✅ FeastHUB ULTIMATE загружен! Версия 15.0")
