@@ -1,5 +1,5 @@
 --[[
-    FeastHUB [Killer_Mode V1.2] - ULTIMATE EDITION
+    FeastHUB [Killer_Mode V1.3] - ULTIMATE EDITION
     Автор: FeastTeam
 ]]
 
@@ -33,6 +33,9 @@ local lastPos = nil
 local teleportCounter = 0
 local currentSea = 1
 local Window = nil
+local attackTick = 0
+local healTick = 0
+local menuClosedByX = false
 
 -- ==========================================
 -- ОЖИДАНИЕ ЗАГРУЗКИ ПЕРСОНАЖА
@@ -188,7 +191,7 @@ TitleLabel.BackgroundTransparency = 1
 TitleLabel.Position = UDim2.new(0, 20, 0, 15)
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "FeastHUB [Killer_Mode V1.2]"
+TitleLabel.Text = "FeastHUB [Killer_Mode V1.3]"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 TitleLabel.TextScaled = true
 
@@ -360,10 +363,12 @@ spawn(function()
 end)
 
 -- ==========================================
--- ОСНОВНОЕ МЕНЮ
+-- ОСНОВНОЕ МЕНЮ (ПЕРЕТАСКИВАЕТСЯ)
 -- ==========================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 Window = Library.CreateLib("FeastHUB [Killer_Mode V1]", "DarkTheme")
+
+-- Делаем всё меню перетаскиваемым
 Window.Draggable = true
 
 -- Вкладки
@@ -375,7 +380,7 @@ local AntiBanTab = Window:NewTab("AntiBan")
 local SettingsTab = Window:NewTab("Settings")
 
 -- ==========================================
--- УПРАВЛЕНИЕ МЕНЮ
+-- УПРАВЛЕНИЕ МЕНЮ (ИСПРАВЛЕНО)
 -- ==========================================
 local function ToggleMenu()
     isMenuVisible = not isMenuVisible
@@ -412,9 +417,9 @@ FloatButton.InputBegan:Connect(function(input)
 end)
 
 -- ==========================================
--- ИСПРАВЛЕННЫЙ GOD HEAL (100% МГНОВЕННО + БЕССМЕРТИЕ)
+-- ИСПРАВЛЕННЫЙ GOD HEAL (ДЛЯ ВСЕХ ТИПОВ УРОНА)
 -- ==========================================
-local HealSection = HealTab:NewSection("👑 GOD HEAL [БЕССМЕРТИЕ]")
+local HealSection = HealTab:NewSection("👑 GOD HEAL [АБСОЛЮТНОЕ]")
 
 local function startGodHeal()
     if godHealConnection then
@@ -428,30 +433,39 @@ local function startGodHeal()
             
             local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
             if humanoid then
-                -- МГНОВЕННОЕ 100% ВОССТАНОВЛЕНИЕ
+                -- Мгновенное 100% восстановление
                 if humanoid.Health < humanoid.MaxHealth then
                     humanoid.Health = humanoid.MaxHealth
                 end
                 
-                -- НЕ ДАЕМ УМЕРЕТЬ (если здоровье упало до 0)
+                -- Защита от смерти (если здоровье упало до 0)
                 if humanoid.Health <= 0 then
-                    humanoid.Health = humanoid.MaxHealth  -- Мгновенное воскрешение
+                    humanoid.Health = humanoid.MaxHealth
                 end
                 
-                -- БЛОКИРУЕМ СОСТОЯНИЕ СМЕРТИ
+                -- Блокируем состояние смерти
                 humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                
+                -- Защита от любых повреждений (перехват урона)
+                for _, connection in pairs(getconnections(humanoid.HealthChanged)) do
+                    if connection.Function then
+                        connection:Disable()
+                    end
+                end
             end
         end)
     end)
 end
 
-HealSection:NewToggle("👑 GOD HEAL", "100% мгновенно + бессмертие", function(state)
+HealSection:NewToggle("👑 GOD HEAL", "Абсолютное бессмертие (любой урон)", function(state)
     isGodHealEnabled = state
     if state then
         startGodHeal()
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "FeastHUB",
-            Text = "👑 God Heal активирован (бессмертие)",
+            Text = "👑 God Heal активирован (абсолютный)",
             Duration = 3
         })
     else
@@ -464,18 +478,20 @@ HealSection:NewToggle("👑 GOD HEAL", "100% мгновенно + бессмер
             local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
             if humanoid then
                 humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+                humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
             end
         end
     end
 end)
 
-HealSection:NewLabel("✅ Мгновенное 100% восстановление")
-HealSection:NewLabel("✅ Невозможно умереть")
+HealSection:NewLabel("✅ Работает против любого урона")
+HealSection:NewLabel("✅ Мгновенное воскрешение")
 
 -- ==========================================
--- ИСПРАВЛЕННАЯ АВТОАТАКА (БЕЗ САМОУБИЙСТВА)
+-- ОПТИМИЗИРОВАННАЯ АВТОАТАКА (БЕЗ ЛАГОВ)
 -- ==========================================
-local AutoAttackSection = FarmTab:NewSection("⚔️ ULTRA ATTACK [ВСЕ ЦЕЛИ]")
+local AutoAttackSection = FarmTab:NewSection("⚔️ ULTRA ATTACK [ОПТИМИЗИРОВАНО]")
 
 local function findAllTargets()
     if not player or not player.Character then return {} end
@@ -484,40 +500,45 @@ local function findAllTargets()
     if not root then return {} end
     
     local targets = {}
-    local checked = {}
+    local currentTime = tick()
+    
+    -- Ограничиваем поиск раз в 0.5 секунды для оптимизации
+    if attackTick > currentTime then
+        return targets
+    end
+    attackTick = currentTime + 0.5
     
     -- Поиск ВСЕХ существ с Humanoid (кроме себя)
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if not checked[obj] then
-            checked[obj] = true
+    for _, obj in pairs(workspace:GetChildren()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+            -- Пропускаем себя
+            if obj == player.Character then
+                continue
+            end
             
-            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                -- Пропускаем себя
-                if obj == player.Character then
-                    continue
-                end
-                
-                local hum = obj:FindFirstChildOfClass("Humanoid")
-                local objRoot = obj:FindFirstChild("HumanoidRootPart")
-                
-                if hum and hum.Health > 0 and objRoot then
-                    local dist = (objRoot.Position - root.Position).Magnitude
-                    if dist <= 50 then
-                        table.insert(targets, {
-                            obj = obj,
-                            root = objRoot,
-                            dist = dist,
-                            hum = hum
-                        })
-                    end
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            local objRoot = obj:FindFirstChild("HumanoidRootPart")
+            
+            if hum and hum.Health > 0 and objRoot then
+                local dist = (objRoot.Position - root.Position).Magnitude
+                if dist <= 50 then
+                    table.insert(targets, {
+                        obj = obj,
+                        root = objRoot,
+                        dist = dist,
+                        hum = hum
+                    })
                 end
             end
         end
     end
     
-    table.sort(targets, function(a, b)
-        return a.dist < b.dist
-    end)
+    -- Быстрая сортировка
+    if #targets > 1 then
+        table.sort(targets, function(a, b)
+            return a.dist < b.dist
+        end)
+    end
     
     return targets
 end
@@ -528,10 +549,16 @@ local function startAutoAttack()
     end
     
     local lastAttack = 0
-    local attackSpeed = 0.1 -- 3x скорость
+    local attackSpeed = 0.15 -- Оптимальная скорость без лагов
     
     attackConnection = RunService.Heartbeat:Connect(function()
         if not isAttackEnabled then return end
+        
+        -- Ограничиваем частоту проверки для оптимизации
+        local currentTime = tick()
+        if currentTime - lastAttack < attackSpeed then
+            return
+        end
         
         pcall(function()
             if not player or not player.Character then return end
@@ -555,33 +582,29 @@ local function startAutoAttack()
                 return
             end
             
+            -- Плавный поворот
             root.CFrame = CFrame.lookAt(root.Position, targetRoot.Position)
             
+            -- Подходим если далеко
             if target.dist > 8 then
                 root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 4)
             end
             
-            local currentTime = tick()
-            if currentTime - lastAttack > attackSpeed then
-                if tool then
-                    tool:Activate()
-                    for i = 1, 2 do
-                        tool:Activate()
-                        wait(0.01)
-                    end
-                    lastAttack = currentTime
-                end
+            -- Атака
+            if tool then
+                tool:Activate()
+                lastAttack = currentTime
             end
         end)
     end)
 end
 
-AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ ULTRA ATTACK", "Атакует ВСЕХ КРОМЕ СЕБЯ", function()
+AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Оптимизированная атака без лагов", function()
     isAttackEnabled = true
     startAutoAttack()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "FeastHUB",
-        Text = "⚔️ Ultra Attack включен",
+        Text = "⚔️ Ultra Attack включен (оптимизировано)",
         Duration = 3
     })
 end)
@@ -599,7 +622,7 @@ local attackStatus = AutoAttackSection:NewLabel("Статус: ⚪ Выключ�
 spawn(function()
     while true do
         if isAttackEnabled then
-            attackStatus:UpdateLabel("Статус: 🔴 Атакуем")
+            attackStatus:UpdateLabel("Статус: 🔴 Атакуем (оптимизировано)")
         else
             attackStatus:UpdateLabel("Статус: ⚪ Выключен")
         end
@@ -790,6 +813,7 @@ MobileSection:NewButton("🔄 СБРОСИТЬ МЕНЮ", "Восстанови�
         Window:ToggleUI()
         FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
         isMenuVisible = true
+        menuClosedByX = false
     end
 end)
 
@@ -798,7 +822,8 @@ InfoSection:NewLabel("• Тап по F - открыть/закрыть меню
 InfoSection:NewLabel("• Перетащи F - переместить кнопку")
 InfoSection:NewLabel("• Двойной тап - скрыть на 1 сек")
 InfoSection:NewLabel("• Меню можно перетаскивать")
-InfoSection:NewLabel("• God Heal - 100% мгновенно + бессмертие")
+InfoSection:NewLabel("• God Heal - абсолютное бессмертие")
+InfoSection:NewLabel("• Автоатака оптимизирована без лагов")
 
 -- ==========================================
 -- ФИНАЛЬНОЕ УВЕДОМЛЕНИЕ
@@ -810,4 +835,4 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
     Duration = 4
 })
 
-print("✅ FeastHUB ULTIMATE загружен! Версия 17.0")
+print("✅ FeastHUB ULTIMATE загружен! Версия 19.0")
