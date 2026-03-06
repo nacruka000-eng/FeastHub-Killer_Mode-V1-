@@ -1,5 +1,5 @@
 --[[
-    FeastHUB [Killer_Mode V1.3(Fix)] - ULTIMATE EDITION
+    FeastHUB [Killer_Mode V1.3] - FULL INTERFACE RESTORED
     Автор: FeastTeam
 ]]
 
@@ -44,19 +44,83 @@ repeat wait(0.1) until player.Character
 repeat wait(0.1) until player.Character:FindFirstChild("Humanoid")
 repeat wait(0.1) until player.Character:FindFirstChild("HumanoidRootPart")
 
+-- Следим за респавном
+player.CharacterAdded:Connect(function(newChar)
+    wait(1)
+    if isAttackEnabled and attackConnection then
+        attackConnection:Disconnect()
+        startAutoAttack()
+    end
+    if isGodHealEnabled and godHealConnection then
+        godHealConnection:Disconnect()
+        startGodHeal()
+    end
+end)
+
 -- ==========================================
--- ИСПРАВЛЕННАЯ ФУНКЦИЯ ОПРЕДЕЛЕНИЯ МОРЯ
+-- ПРОДВИНУТЫЙ ANTIBAN/ANTIKICK
+-- ==========================================
+local mt = getrawmetatable(game)
+local old_namecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    
+    if method == "Kick" or method == "kick" then
+        return
+    end
+    
+    if method == "Destroy" and tostring(self):find("Character") then
+        return
+    end
+    
+    if method == "FireServer" and type(args[1]) == "string" then
+        if args[1]:lower():find("ban") or args[1]:lower():find("kick") or 
+           args[1]:lower():find("anticheat") or args[1]:lower():find("detect") then
+            return
+        end
+    end
+    
+    return old_namecall(self, ...)
+end)
+
+setreadonly(mt, true)
+
+-- Защита от телепорт-детекта
+RunService.Heartbeat:Connect(function()
+    pcall(function()
+        if not player or not player.Character then return end
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        if lastPos then
+            local dist = (root.Position - lastPos).Magnitude
+            if dist > 500 then
+                teleportCounter = teleportCounter + 1
+                if teleportCounter > 3 then
+                    wait(1)
+                    teleportCounter = 0
+                end
+            end
+        end
+        lastPos = root.Position
+    end)
+end)
+
+-- ==========================================
+-- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ МОРЯ (ИСПРАВЛЕНА)
 -- ==========================================
 local function getCurrentSea()
     if not player then return 1 end
     
     local success, result = pcall(function()
-        -- Проверяем по координатам (самый надежный способ)
+        -- Проверяем по координатам
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local pos = player.Character.HumanoidRootPart.Position
             local y = math.abs(pos.Y)
             
-            -- Примерные высоты для разных морей
             if y < 1000 then
                 return 1 -- Первое море
             elseif y < 5000 then
@@ -76,19 +140,19 @@ local function getCurrentSea()
 end
 
 -- ==========================================
--- ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ ОСТРОВОВ ПО МОРЮ
+-- ФУНКЦИЯ ОБНОВЛЕНИЯ ОСТРОВОВ
 -- ==========================================
 local function updateIslandsBySea()
     currentSea = getCurrentSea()
     
-    -- Очищаем все секции с островами в MainTab
+    -- Очищаем старые секции
     for _, section in ipairs(MainTab:GetSections()) do
         if section.Name:find("МОРЕ") or section.Name:find("ИНФОРМАЦИЯ") then
-            -- Не можем удалить, но можем пересоздать
+            -- Пересоздадим заново
         end
     end
     
-    -- Создаем новые секции в зависимости от моря
+    -- Показываем только текущее море
     if currentSea == 1 then
         local FirstSeaSection = MainTab:NewSection("🌊 ПЕРВОЕ МОРЕ")
         
@@ -166,15 +230,6 @@ local function updateIslandsBySea()
     end)
 end
 
--- Следим за перемещениями между морями
-RunService.Heartbeat:Connect(function()
-    local newSea = getCurrentSea()
-    if newSea ~= currentSea then
-        currentSea = newSea
-        updateIslandsBySea()
-    end
-end)
-
 -- ==========================================
 -- ФУНКЦИЯ ТЕЛЕПОРТА
 -- ==========================================
@@ -218,59 +273,7 @@ local function safeTeleport(position)
 end
 
 -- ==========================================
--- ПРОДВИНУТЫЙ ANTIBAN/ANTIKICK
--- ==========================================
-local mt = getrawmetatable(game)
-local old_namecall = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local args = {...}
-    local method = getnamecallmethod()
-    
-    if method == "Kick" or method == "kick" then
-        return
-    end
-    
-    if method == "Destroy" and tostring(self):find("Character") then
-        return
-    end
-    
-    if method == "FireServer" and type(args[1]) == "string" then
-        if args[1]:lower():find("ban") or args[1]:lower():find("kick") or 
-           args[1]:lower():find("anticheat") or args[1]:lower():find("detect") then
-            return
-        end
-    end
-    
-    return old_namecall(self, ...)
-end)
-
-setreadonly(mt, true)
-
--- Защита от телепорт-детекта
-RunService.Heartbeat:Connect(function()
-    pcall(function()
-        if not player or not player.Character then return end
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        if lastPos then
-            local dist = (root.Position - lastPos).Magnitude
-            if dist > 500 then
-                teleportCounter = teleportCounter + 1
-                if teleportCounter > 3 then
-                    wait(1)
-                    teleportCounter = 0
-                end
-            end
-        end
-        lastPos = root.Position
-    end)
-end)
-
--- ==========================================
--- ЗАГРУЗОЧНЫЙ ЭКРАН
+-- ЗАГРУЗОЧНЫЙ ЭКРАН (ТВОЙ ДИЗАЙН)
 -- ==========================================
 local LoaderGui = Instance.new("ScreenGui")
 LoaderGui.Name = "FeastHUB_Loader"
@@ -421,7 +424,7 @@ wait(0.5)
 LoaderGui:Destroy()
 
 -- ==========================================
--- ПЛАВАЮЩАЯ КНОПКА F
+-- ПЛАВАЮЩАЯ КНОПКА F (ИСПРАВЛЕНА)
 -- ==========================================
 wait(0.2)
 
@@ -468,6 +471,7 @@ local PulseCorner = Instance.new("UICorner")
 PulseCorner.CornerRadius = UDim.new(1, 0)
 PulseCorner.Parent = PulseIndicator
 
+-- Анимация пульсации
 spawn(function()
     while true do
         for i = 0.3, 0.7, 0.1 do
@@ -483,13 +487,13 @@ spawn(function()
 end)
 
 -- ==========================================
--- ОСНОВНОЕ МЕНЮ
+-- ОСНОВНОЕ МЕНЮ (ТВОЙ ДИЗАЙН)
 -- ==========================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 Window = Library.CreateLib("FeastHUB [Killer_Mode V1.3]", "DarkTheme")
 Window.Draggable = true
 
--- Вкладки
+-- ТВОИ ВКЛАДКИ
 local MainTab = Window:NewTab("Main")
 local FarmTab = Window:NewTab("Auto Farm")
 local PlayerTab = Window:NewTab("Player")
@@ -498,7 +502,7 @@ local AntiBanTab = Window:NewTab("AntiBan")
 local SettingsTab = Window:NewTab("Settings")
 
 -- ==========================================
--- УПРАВЛЕНИЕ МЕНЮ
+-- УПРАВЛЕНИЕ МЕНЮ (ИСПРАВЛЕНО)
 -- ==========================================
 local function ToggleMenu()
     isMenuVisible = not isMenuVisible
@@ -511,10 +515,12 @@ local function ToggleMenu()
     end
 end
 
+-- ИСПРАВЛЕНО: Используем MouseButton1Click для надежности
 FloatButton.MouseButton1Click:Connect(function()
     ToggleMenu()
 end)
 
+-- Двойной клик для скрытия кнопки
 local lastTap = 0
 FloatButton.MouseButton1Click:Connect(function()
     local currentTime = tick()
@@ -527,10 +533,61 @@ FloatButton.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- ИНИЦИАЛИЗАЦИЯ ОСТРОВОВ ПРИ ЗАГРУЗКЕ
+-- ИНИЦИАЛИЗАЦИЯ ОСТРОВОВ
 -- ==========================================
 currentSea = getCurrentSea()
 updateIslandsBySea()
+
+-- Следим за перемещениями между морями
+RunService.Heartbeat:Connect(function()
+    local newSea = getCurrentSea()
+    if newSea ~= currentSea then
+        currentSea = newSea
+        updateIslandsBySea()
+    end
+end)
+
+-- ==========================================
+-- PLAYER INFO (ТВОЙ ДИЗАЙН)
+-- ==========================================
+local PlayerInfoSection = PlayerTab:NewSection("📊 Статистика")
+
+-- Функция обновления статистики
+local function updatePlayerStats()
+    pcall(function()
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            for _, v in pairs(leaderstats:GetChildren()) do
+                if v.Name == "Level" then
+                    PlayerInfoSection:UpdateLabel("Уровень: Загрузка...", "Ур. " .. tostring(v.Value))
+                elseif v.Name == "Exp" or v.Name == "XP" then
+                    PlayerInfoSection:UpdateLabel("Опыт: Загрузка...", tostring(v.Value) .. "/???")
+                elseif v.Name == "Beli" or v.Name == "Money" then
+                    PlayerInfoSection:UpdateLabel("Деньги: Загрузка...", "$" .. tostring(v.Value))
+                elseif v.Name == "Fragments" then
+                    PlayerInfoSection:UpdateLabel("Фрагменты: Загрузка...", "$" .. tostring(v.Value))
+                end
+            end
+        end
+    end)
+end
+
+PlayerInfoSection:NewLabel("Ур. " .. (player.leaderstats and player.leaderstats.Level and player.leaderstats.Level.Value or "???"))
+PlayerInfoSection:NewLabel("Опыт: Загрузка...")
+PlayerInfoSection:NewLabel("Деньги: Загрузка...")
+PlayerInfoSection:NewLabel("Фрагменты: Загрузка...")
+
+PlayerInfoSection:NewButton("🔄 Обновить статистику", "Обновить данные игрока", function()
+    updatePlayerStats()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "FeastHUB",
+        Text = "📊 Статистика обновлена",
+        Duration = 2
+    })
+end)
+
+-- Первое обновление
+updatePlayerStats()
 
 -- ==========================================
 -- GOD HEAL
@@ -773,7 +830,7 @@ InfoSection:NewLabel("• Нажми F - открыть/закрыть меню"
 InfoSection:NewLabel("• Перетащи F - переместить кнопку")
 InfoSection:NewLabel("• Двойной клик - скрыть на 1 сек")
 InfoSection:NewLabel("• Меню можно перетаскивать")
-InfoSection:NewLabel("• Острова показываются автоматически для твоего моря")
+InfoSection:NewLabel("• Острова показываются для твоего моря")
 
 -- ==========================================
 -- ФИНАЛЬНОЕ УВЕДОМЛЕНИЕ
@@ -786,4 +843,4 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
     Duration = 4
 })
 
-print("✅ FeastHUB ULTIMATE загружен! Версия 22.0")
+print("✅ FeastHUB ULTIMATE загружен! Версия 23.0")
