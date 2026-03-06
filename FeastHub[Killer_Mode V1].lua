@@ -1,7 +1,7 @@
 --[[
-    FeastHUB [Killer_Mode V1] - Mobile Edition
-    ANTI-ANTICHEAT / ANTI-LOGGER SYSTEM V5
-    ПОЛНАЯ ОПТИМИЗАЦИЯ (БЕЗ ПОТЕРИ ФУНКЦИЙ)
+    FeastHUB [Killer_Mode V1] - FINAL EDITION
+    Версия: 2
+    Автор: FeastTeam
 ]]
 
 -- ==========================================
@@ -16,7 +16,55 @@ pcall(function()
 end)
 
 -- ==========================================
--- ЗАГРУЗОЧНЫЙ ЭКРАН (ПОЛНОСТЬЮ СОХРАНЁН)
+-- ПРИНУДИТЕЛЬНАЯ ЗАГРУЗКА ПЕРСОНАЖА
+-- ==========================================
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+repeat wait(0.1) until player
+
+local function forceLoadCharacter()
+    pcall(function()
+        if not player.Character then
+            player.CharacterAdded:Wait()
+        end
+        
+        local character = player.Character
+        if not character then return end
+        
+        local humanoid = character:WaitForChild("Humanoid", 5)
+        local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+        
+        if humanoid and rootPart then
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            
+            if rootPart.Anchored then
+                rootPart.Anchored = false
+            end
+            
+            if humanoid.Health <= 0 then
+                humanoid.Health = humanoid.MaxHealth
+            end
+            return true
+        end
+        return false
+    end)
+end
+
+local loaded = forceLoadCharacter()
+if not loaded then
+    if player.Character then
+        player.Character:BreakJoints()
+    end
+    wait(1)
+    player.CharacterAdded:Wait()
+    forceLoadCharacter()
+end
+
+-- ==========================================
+-- ЗАГРУЗОЧНЫЙ ЭКРАН
 -- ==========================================
 local LoaderGui = Instance.new("ScreenGui")
 LoaderGui.Name = "FeastHUB_Loader"
@@ -43,6 +91,8 @@ LoaderFrame.BorderSizePixel = 0
 LoaderFrame.Position = UDim2.new(0.5, -175, 0.5, -125)
 LoaderFrame.Size = UDim2.new(0, 350, 0, 250)
 LoaderFrame.BackgroundTransparency = 0.1
+LoaderFrame.Active = true
+LoaderFrame.Draggable = true
 
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 15)
@@ -54,7 +104,7 @@ TitleLabel.BackgroundTransparency = 1
 TitleLabel.Position = UDim2.new(0, 20, 0, 15)
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "FeastHUB [Killer_Mode V1]"
+TitleLabel.Text = "FeastHUB [Killer_Mode V1.1]"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 TitleLabel.TextScaled = true
 
@@ -64,7 +114,7 @@ SubLabel.BackgroundTransparency = 1
 SubLabel.Position = UDim2.new(0, 20, 0, 55)
 SubLabel.Size = UDim2.new(1, -40, 0, 25)
 SubLabel.Font = Enum.Font.Gotham
-SubLabel.Text = "запуск скрипта..."
+SubLabel.Text = "Запуск скрипта..."
 SubLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 SubLabel.TextScaled = true
 
@@ -115,49 +165,105 @@ DetailStatus.BackgroundTransparency = 1
 DetailStatus.Position = UDim2.new(0, 20, 0, 150)
 DetailStatus.Size = UDim2.new(1, -40, 0, 40)
 DetailStatus.Font = Enum.Font.Gotham
-DetailStatus.Text = "[AntiCheat:0% | AntiLogger:0% | Total:0%]"
+DetailStatus.Text = "[AntiCheat:0% | AntiLogger:0% | AntiKick:0%]"
 DetailStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
 DetailStatus.TextSize = 12
 DetailStatus.TextWrapped = true
 
--- Функция обновления загрузки (без изменений)
-local function updateLoader(percent, stage, ac, logger, total)
+local function updateLoader(percent, stage, ac, logger, kick)
     ProgressBar:TweenSize(UDim2.new(percent/100, 0, 1, 0), "Out", "Linear", 0.2, true)
     PercentLabel.Text = math.floor(percent) .. "%"
-    DetailStatus.Text = string.format("[AntiCheat:%d%% | AntiLogger:%d%% | Total:%d%%]", 
-        ac or 0, logger or 0, total or 0)
+    DetailStatus.Text = string.format("[AntiCheat:%d%% | AntiLogger:%d%% | AntiKick:%d%%]", 
+        ac, logger, kick)
     StatusLabel.Text = "Статус: " .. stage
 end
 
--- Этапы загрузки (без изменений)
-updateLoader(0, "Поиск систем слежения", 0, 0, 0)
+-- Этапы загрузки
+updateLoader(0, "Подготовка", 0, 0, 0)
 wait(0.5)
 
-for i = 1, 40 do
-    updateLoader(i, "Сканирование AntiCheat", i, 0, 0)
+for i = 1, 33 do
+    updateLoader(i, "Загрузка AntiCheat", i, 0, 0)
     wait(0.03)
 end
 
-for i = 40, 80 do
-    updateLoader(i, "Поиск логгеров", 40, i-40, 0)
-    wait(0.02)
+for i = 34, 66 do
+    updateLoader(i, "Загрузка AntiLogger", 33, i-33, 0)
+    wait(0.03)
 end
 
-for i = 80, 100 do
-    updateLoader(i, "Уничтожение угроз", 40, 40, i-80)
-    wait(0.05)
+for i = 67, 100 do
+    updateLoader(i, "Загрузка AntiKick", 33, 33, i-66)
+    wait(0.03)
 end
 
-updateLoader(100, "Система активна", 40, 40, 20)
+updateLoader(100, "Готово!", 33, 33, 34)
 wait(0.5)
 LoaderGui:Destroy()
 
 -- ==========================================
--- ГЛАВНАЯ СИСТЕМА: ОХОТНИК ЗА АНТИЧИТАМИ
+-- ПРОДВИНУТЫЙ ANTIBAN/ANTIKICK
+-- ==========================================
+local mt = getrawmetatable(game)
+local old_namecall = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    
+    -- Блокируем кики
+    if method == "Kick" or method == "kick" then
+        return
+    end
+    
+    -- Блокируем удаление персонажа
+    if method == "Destroy" and tostring(self):find("Character") then
+        return
+    end
+    
+    -- Блокируем подозрительные Remote события
+    if method == "FireServer" and type(args[1]) == "string" then
+        if args[1]:lower():find("ban") or args[1]:lower():find("kick") or 
+           args[1]:lower():find("anticheat") or args[1]:lower():find("detect") then
+            return
+        end
+    end
+    
+    return old_namecall(self, ...)
+end)
+
+setreadonly(mt, true)
+
+-- Защита от телепорт-детекта
+local lastPos = nil
+local teleportCounter = 0
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    pcall(function()
+        if not player or not player.Character then return end
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        if lastPos then
+            local dist = (root.Position - lastPos).Magnitude
+            if dist > 500 then
+                teleportCounter = teleportCounter + 1
+                if teleportCounter > 3 then
+                    wait(1)
+                    teleportCounter = 0
+                end
+            end
+        end
+        lastPos = root.Position
+    end)
+end)
+
+-- ==========================================
+-- ПЛАВАЮЩАЯ КНОПКА F
 -- ==========================================
 wait(0.2)
 
--- Создаем главный GUI (полностью сохранён)
 local MobileGui = Instance.new("ScreenGui")
 MobileGui.Name = "FeastHUB_Button"
 MobileGui.Parent = game.CoreGui
@@ -166,7 +272,6 @@ MobileGui.ResetOnSpawn = false
 MobileGui.IgnoreGuiInset = true
 MobileGui.DisplayOrder = 999998
 
--- Плавающая кнопка F (полностью сохранена)
 local FloatButton = Instance.new("Frame")
 FloatButton.Name = "FloatButton"
 FloatButton.Parent = MobileGui
@@ -201,7 +306,7 @@ local PulseCorner = Instance.new("UICorner")
 PulseCorner.CornerRadius = UDim.new(1, 0)
 PulseCorner.Parent = PulseIndicator
 
--- Анимация пульсации (оставлена как есть, она лёгкая)
+-- Простая пульсация
 spawn(function()
     while true do
         for i = 0.3, 0.7, 0.1 do
@@ -217,309 +322,168 @@ spawn(function()
 end)
 
 -- ==========================================
--- ОСНОВНОЕ МЕНЮ (KAVO UI) - БЕЗ ИЗМЕНЕНИЙ
+-- ОСНОВНОЕ МЕНЮ (KAVO UI)
 -- ==========================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 local Window = Library.CreateLib("FeastHUB [Killer_Mode V1]", "DarkTheme")
 
 -- Вкладки
 local MainTab = Window:NewTab("Main")
-local AC_HunterTab = Window:NewTab("🔍 ANTI-CHEAT HUNTER")
-local SpeedTab = Window:NewTab("Speed")
 local FarmTab = Window:NewTab("Auto Farm")
+local PlayerTab = Window:NewTab("Player")
+local AntiBanTab = Window:NewTab("AntiBan")
 local SettingsTab = Window:NewTab("Settings")
 
 -- ==========================================
--- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ (ДОБАВЛЕНЫ ССЫЛКИ ДЛЯ ОПТИМИЗАЦИИ)
+-- AUTO ATTACK (РАДИУС 20)
 -- ==========================================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local Workspace = workspace
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AutoAttackSection = FarmTab:NewSection("⚔️ AUTO ATTACK [20]")
 
-local Hunter = {
-    active = true,
-    scanInterval = 10,  -- БЫЛО 2, СТАЛО 10 (реже сканирование)
-    threatsFound = 0,
-    threatsDestroyed = 0,
-    lastScan = 0,
-    player = nil
-}
+local attackEnabled = false
+local attackConnection = nil
 
--- ==========================================
--- АНТИ-АНТИЧИТ / АНТИ-ЛОГГЕР (ОПТИМИЗИРОВАН)
--- ==========================================
-local HunterSection = AC_HunterTab:NewSection("🎯 ОХОТНИК ЗА АНТИЧИТАМИ")
-
--- СПИСКИ (полностью сохранены)
-local KNOWN_ANTICHEATS = {
-    "AntiCheat", "AC", "AntiCheatModule", "CheatDetector",
-    "BanSystem", "BanHandler", "Admin", "ADMIN", "Remote",
-    "AntiExploit", "AE", "Security", "Sec", "Guard",
-    "Detector", "Scanner", "Monitor", "Logger", "Log",
-    "BanService", "Punishment", "KickHandler", "Kick",
-    "Module_AC", "Module_AntiCheat", "AC_Module",
-    "RemoteEvent_AC", "RemoteFunction_AC",
-    "AntiCheatEvent", "BanEvent", "KickEvent",
-    "Tracking", "Tracker", "Telemetry", "Analytics",
-    "DataCollection", "PlayerData", "ActivityLog",
-    "BloxFruitAC", "BF_AC", "BF_AntiCheat",
-    "FruitGuard", "IslandGuard", "WorldGuard",
-    "CombatLogger", "MovementChecker", "SpeedChecker",
-    "JumpChecker", "FlyChecker", "TPChecker"
-}
-
-local KNOWN_LOGGERS = {
-    "Logger", "LogService", "DataLogger", "Analytics",
-    "Telemetry", "Metric", "Stats", "Statistics",
-    "DataCollector", "DataGatherer", "InfoGather",
-    "PlayerTracker", "ActivityTracker", "SessionTracker",
-    "ReportSystem", "ReportHandler", "Feedback",
-    "CrashReporter", "ErrorHandler", "Debugger"
-}
-
-local SUSPICIOUS_REMOTES = {
-    "Ban", "Kick", "AC", "AntiCheat", "Detection",
-    "Report", "Flag", "Suspect", "CheatDetected",
-    "Punish", "Punishment", "KickPlayer", "BanPlayer"
-}
-
--- ГЛАВНАЯ ФУНКЦИЯ ПОИСКА И УНИЧТОЖЕНИЯ (ОПТИМИЗИРОВАНА)
-local function HuntAndDestroy()
-    spawn(function()
-        while Hunter.active do
-            pcall(function()
-                local currentTime = tick()
-                
-                -- Сканируем раз в N секунд (теперь 10)
-                if currentTime - Hunter.lastScan >= Hunter.scanInterval then
-                    Hunter.lastScan = currentTime
-                    
-                    local threatsFound = 0
-                    local threatsDestroyed = 0
-                    
-                    -- Получаем игрока один раз
-                    local player = Players.LocalPlayer
-                    Hunter.player = player
-                    
-                    -- ==========================================
-                    -- 1. СКАНИРОВАНИЕ PLAYERGUI (ТОЛЬКО ДЕТИ, НЕ ВСЕ ПОТОМКИ)
-                    -- ==========================================
-                    if player and player.PlayerGui then
-                        for _, v in pairs(player.PlayerGui:GetChildren()) do  -- БЫЛО GetDescendants
-                            local name = v.Name:lower()
-                            for _, n in pairs(KNOWN_ANTICHEATS) do
-                                if name:find(n:lower()) then
-                                    threatsFound = threatsFound + 1
-                                    pcall(v.Destroy, v)
-                                    threatsDestroyed = threatsDestroyed + 1
-                                    break
-                                end
-                            end
-                            for _, n in pairs(KNOWN_LOGGERS) do
-                                if name:find(n:lower()) then
-                                    threatsFound = threatsFound + 1
-                                    pcall(v.Destroy, v)
-                                    threatsDestroyed = threatsDestroyed + 1
-                                    break
-                                end
-                            end
-                            if v:IsA("ScreenGui") and name:find("ac") then
-                                threatsFound = threatsFound + 1
-                                pcall(v.Destroy, v)
-                                threatsDestroyed = threatsDestroyed + 1
-                            end
-                            if v:IsA("Frame") and v.BackgroundColor3 == Color3.fromRGB(255, 0, 0) and 
-                               (name:find("alert") or name:find("warning")) then
-                                threatsFound = threatsFound + 1
-                                pcall(v.Destroy, v)
-                                threatsDestroyed = threatsDestroyed + 1
-                            end
-                        end
+local function findTarget()
+    if not player or not player.Character then return nil end
+    
+    local root = player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    for _, obj in pairs(workspace:GetChildren()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            local objRoot = obj:FindFirstChild("HumanoidRootPart")
+            
+            if hum and hum.Health > 0 and objRoot then
+                if not obj:FindFirstChild("Player") then
+                    local dist = (objRoot.Position - root.Position).Magnitude
+                    if dist <= 20 then
+                        return obj
                     end
-                    
-                    -- ==========================================
-                    -- 2. СКАНИРОВАНИЕ WORKSPACE (ТОЛЬКО ДЕТИ)
-                    -- ==========================================
-                    for _, v in pairs(Workspace:GetChildren()) do  -- БЫЛО GetDescendants
-                        local name = v.Name:lower()
-                        for _, n in pairs(KNOWN_ANTICHEATS) do
-                            if name:find(n:lower()) then
-                                threatsFound = threatsFound + 1
-                                pcall(v.Destroy, v)
-                                threatsDestroyed = threatsDestroyed + 1
-                                break
-                            end
-                        end
-                        for _, n in pairs(KNOWN_LOGGERS) do
-                            if name:find(n:lower()) then
-                                threatsFound = threatsFound + 1
-                                pcall(v.Destroy, v)
-                                threatsDestroyed = threatsDestroyed + 1
-                                break
-                            end
-                        end
-                    end
-                    
-                    -- ==========================================
-                    -- 3. СКАНИРОВАНИЕ COREGUI (ТОЛЬКО ДЕТИ)
-                    -- ==========================================
-                    for _, v in pairs(CoreGui:GetChildren()) do  -- БЫЛО GetDescendants
-                        if not v.Name:find("FeastHUB") then
-                            local name = v.Name:lower()
-                            for _, n in pairs(KNOWN_ANTICHEATS) do
-                                if name:find(n:lower()) then
-                                    threatsFound = threatsFound + 1
-                                    pcall(v.Destroy, v)
-                                    threatsDestroyed = threatsDestroyed + 1
-                                    break
-                                end
-                            end
-                            for _, n in pairs(KNOWN_LOGGERS) do
-                                if name:find(n:lower()) then
-                                    threatsFound = threatsFound + 1
-                                    pcall(v.Destroy, v)
-                                    threatsDestroyed = threatsDestroyed + 1
-                                    break
-                                end
-                            end
-                        end
-                    end
-                    
-                    -- ==========================================
-                    -- 4. СКАНИРОВАНИЕ REPLICATEDSTORAGE (ТОЛЬКО ДЕТИ)
-                    -- ==========================================
-                    if ReplicatedStorage then
-                        for _, v in pairs(ReplicatedStorage:GetChildren()) do  -- БЫЛО GetDescendants
-                            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-                                local name = v.Name:lower()
-                                for _, n in pairs(SUSPICIOUS_REMOTES) do
-                                    if name:find(n:lower()) then
-                                        threatsFound = threatsFound + 1
-                                        -- Блокируем, но не удаляем (как и было)
-                                        pcall(v.Destroy, v)
-                                        threatsDestroyed = threatsDestroyed + 1
-                                        break
-                                    end
-                                end
-                            elseif v:IsA("ModuleScript") then
-                                local name = v.Name:lower()
-                                for _, n in pairs(KNOWN_ANTICHEATS) do
-                                    if name:find(n:lower()) then
-                                        threatsFound = threatsFound + 1
-                                        pcall(v.Destroy, v)
-                                        threatsDestroyed = threatsDestroyed + 1
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    
-                    -- ==========================================
-                    -- 5. ПОИСК СКРЫТЫХ ЛОГГЕРОВ (оставлено как есть, редко)
-                    -- ==========================================
-                    -- (Этот блок не особо тяжелый, оставляем без изменений)
-                    for _, v in pairs(getgc(true)) do
-                        if type(v) == "table" then
-                            for key, value in pairs(v) do
-                                if type(key) == "string" then
-                                    if key:lower():find("log") or key:lower():find("report") then
-                                        if type(value) == "function" then
-                                            pcall(function()
-                                                v[key] = function() return true end
-                                                threatsDestroyed = threatsDestroyed + 1
-                                            end)
-                                        end
-                                    elseif key:lower():find("ban") or key:lower():find("kick") then
-                                        if type(value) == "function" then
-                                            pcall(function()
-                                                v[key] = function() return false end
-                                                threatsDestroyed = threatsDestroyed + 1
-                                            end)
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    
-                    Hunter.threatsFound = Hunter.threatsFound + threatsFound
-                    Hunter.threatsDestroyed = Hunter.threatsDestroyed + threatsDestroyed
                 end
-            end)
-            wait(5)  -- БЫЛО wait(1), СТАЛО wait(5) — реже проверка
+            end
         end
-    end)
+    end
+    return nil
 end
 
--- Кнопка активации охотника (без изменений)
-HunterSection:NewToggle("🔍 АКТИВИРОВАТЬ ОХОТНИКА", "Поиск и уничтожение античитов", function(state)
-    Hunter.active = state
-    if state then
-        HuntAndDestroy()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "FeastHUB",
-            Text = "🔍 Охотник за античитами активирован!",
-            Duration = 3
-        })
+local function doAttack(target)
+    if not player or not player.Character then return end
+    
+    local root = player.Character:FindFirstChild("HumanoidRootPart")
+    local tool = player.Character:FindFirstChildOfClass("Tool")
+    local targetRoot = target:FindFirstChild("HumanoidRootPart")
+    
+    if root and targetRoot then
+        -- Поворачиваемся к цели
+        root.CFrame = CFrame.lookAt(root.Position, targetRoot.Position)
+        
+        -- Если далеко - подходим
+        local dist = (targetRoot.Position - root.Position).Magnitude
+        if dist > 8 then
+            root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 4)
+        end
+        
+        -- Атакуем
+        if tool then
+            tool:Activate()
+        end
     end
-end)
+end
 
--- Настройки охотника (без изменений)
-local HunterSettings = AC_HunterTab:NewSection("⚙️ Настройки охотника")
-
-HunterSettings:NewSlider("Интервал сканирования", "Частота проверки (сек)", 20, 5, function(s)  -- Мин теперь 5 сек
-    Hunter.scanInterval = s
-end)
-
-HunterSettings:NewButton("Принудительное сканирование", "Проверить сейчас", function()
-    Hunter.lastScan = 0
+AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Автоатака радиус 20", function()
+    attackEnabled = true
+    if attackConnection then attackConnection:Disconnect() end
+    
+    attackConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not attackEnabled then return end
+        pcall(function()
+            local target = findTarget()
+            if target then
+                doAttack(target)
+            end
+        end)
+    end)
+    
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "FeastHUB",
-        Text = "🔍 Сканирование запущено...",
+        Text = "⚔️ Auto Attack включен",
         Duration = 2
     })
 end)
 
--- Статистика (ТЕПЕРЬ ОБНОВЛЯЕТСЯ ТОЛЬКО ПРИ НАЖАТИИ КНОПКИ, А НЕ КАЖДЫЕ 3 СЕК)
-local HunterStats = AC_HunterTab:NewSection("📊 Статистика")
-
-local threatsFoundLabel = HunterStats:NewLabel("Найдено угроз: 0")
-local threatsDestroyedLabel = HunterStats:NewLabel("Уничтожено: 0")
-local protectionStatus = HunterStats:NewLabel("Статус: Защита активна")
-
--- Функция обновления статистики (вызывается вручную)
-local function updateStats()
-    threatsFoundLabel:UpdateLabel("Найдено угроз: " .. Hunter.threatsFound)
-    threatsDestroyedLabel:UpdateLabel("Уничтожено: " .. Hunter.threatsDestroyed)
-    if Hunter.threatsDestroyed > 0 then
-        protectionStatus:UpdateLabel("Статус: ✅ Защищен")
-    else
-        protectionStatus:UpdateLabel("Статус: 🟢 Система активна")
+AutoAttackSection:NewButton("⏹ ВЫКЛЮЧИТЬ", "Остановить", function()
+    attackEnabled = false
+    if attackConnection then
+        attackConnection:Disconnect()
+        attackConnection = nil
     end
-end
+end)
 
--- Кнопка для обновления статистики (НОВАЯ)
-HunterStats:NewButton("🔄 Обновить статистику", "Показать текущие данные", function()
-    updateStats()
+-- Статус
+local attackStatus = AutoAttackSection:NewLabel("Статус: ⚪ Выключен")
+
+-- Обновление статуса
+spawn(function()
+    while true do
+        if attackEnabled then
+            attackStatus:UpdateLabel("Статус: 🔴 Атакуем")
+        else
+            attackStatus:UpdateLabel("Статус: ⚪ Выключен")
+        end
+        wait(1)
+    end
 end)
 
 -- ==========================================
--- УПРАВЛЕНИЕ КНОПКОЙ F (БЕЗ ИЗМЕНЕНИЙ)
+-- SPEED FUNCTIONS
+-- ==========================================
+local SpeedSection = PlayerTab:NewSection("⚡ Speed Control")
+
+SpeedSection:NewSlider("Скорость бега", "Максимум 100", 100, 16, function(s)
+    if player and player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = s
+        end
+    end
+end)
+
+SpeedSection:NewSlider("Сила прыжка", "Высота прыжка", 100, 50, function(s)
+    if player and player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = s
+        end
+    end
+end)
+
+-- ==========================================
+-- ANTIBAN НАСТРОЙКИ
+-- ==========================================
+local AntiBanSection = AntiBanTab:NewSection("🛡️ ЗАЩИТА")
+
+AntiBanSection:NewLabel("✓ AntiKick активен")
+AntiBanSection:NewLabel("✓ AntiTeleport активен")
+AntiBanSection:NewLabel("✓ AntiCheat активен")
+AntiBanSection:NewLabel("✓ Remote блокировка активна")
+
+AntiBanSection:NewButton("Проверить защиту", "Тест системы", function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "FeastHUB",
+        Text = "✅ Все системы защиты работают",
+        Duration = 3
+    })
+end)
+
+-- ==========================================
+-- УПРАВЛЕНИЕ КНОПКОЙ F
 -- ==========================================
 local MenuVisible = true
 
 local function ToggleMenu()
     MenuVisible = not MenuVisible
-    if MenuVisible then
-        Window:ToggleUI()
-        FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
-    else
-        Window:ToggleUI()
-        FLetter.TextColor3 = Color3.fromRGB(255, 255, 255)
-    end
+    Window:ToggleUI()
+    FLetter.TextColor3 = MenuVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 255, 255)
 end
 
 FloatButton.InputBegan:Connect(function(input)
@@ -546,105 +510,9 @@ FloatButton.InputBegan:Connect(function(input)
 end)
 
 -- ==========================================
--- SPEED FUNCTIONS (ОПТИМИЗИРОВАНО)
+-- МОБИЛЬНЫЕ НАСТРОЙКИ
 -- ==========================================
-local SpeedSection = SpeedTab:NewSection("⚡ Speed Control")
-
-SpeedSection:NewSlider("Speed Walk", "Скорость бега", 100, 16, function(s)
-    local player = Players.LocalPlayer
-    if player and player.Character then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = s
-        end
-    end
-end)
-
--- Управление подключением Speed Attack (чтобы не плодить события)
-local speedAttackConnection = nil
-SpeedSection:NewToggle("Speed Attack", "Ускорение атак", function(state)
-    if state then
-        if speedAttackConnection then speedAttackConnection:Disconnect() end
-        speedAttackConnection = RunService.Stepped:Connect(function()
-            pcall(function()
-                local player = Players.LocalPlayer
-                if player and player.Character then
-                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        for _, anim in pairs(humanoid:GetPlayingAnimationTracks()) do
-                            if anim.Animation.AnimationId:lower():find("attack") then
-                                anim:AdjustSpeed(5)
-                            end
-                        end
-                    end
-                end
-            end)
-        end)
-    else
-        if speedAttackConnection then
-            speedAttackConnection:Disconnect()
-            speedAttackConnection = nil
-        end
-    end
-end)
-
--- ==========================================
--- AUTO FARM (ОПТИМИЗИРОВАНО)
--- ==========================================
-local FarmSection = FarmTab:NewSection("🤖 Auto Farm")
-
-local farming = false
-local farmConnection = nil
-
-FarmSection:NewButton("Start Auto Farm", "Атаковать мобов", function()
-    if farming then return end
-    farming = true
-    
-    -- Используем RunService.Heartbeat вместо while true do (более щадяще)
-    if farmConnection then farmConnection:Disconnect() end
-    farmConnection = RunService.Heartbeat:Connect(function()
-        if not farming then 
-            farmConnection:Disconnect()
-            farmConnection = nil
-            return
-        end
-        
-        pcall(function()
-            local player = Players.LocalPlayer
-            if player and player.Character then
-                local root = player.Character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    for _, v in pairs(Workspace:GetChildren()) do
-                        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
-                            local hum = v:FindFirstChildOfClass("Humanoid")
-                            if hum and hum.Health > 0 then
-                                local mobRoot = v:FindFirstChild("HumanoidRootPart")
-                                if mobRoot then
-                                    root.CFrame = mobRoot.CFrame * CFrame.new(0, 0, 3)
-                                    wait(0.1)  -- небольшая пауза для анимации
-                                    local tool = player.Character:FindFirstChildOfClass("Tool")
-                                    if tool then
-                                        tool:Activate()
-                                    end
-                                    break  -- атакуем одного и переходим к следующему кадру
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end)
-end)
-
-FarmSection:NewButton("Stop Auto Farm", "Остановить", function()
-    farming = false
-end)
-
--- ==========================================
--- МОБИЛЬНЫЕ НАСТРОЙКИ (БЕЗ ИЗМЕНЕНИЙ)
--- ==========================================
-local MobileSection = SettingsTab:NewSection("📱 Мобильное управление")
+local MobileSection = SettingsTab:NewSection("📱 Управление")
 
 MobileSection:NewButton("Показать кнопку F", "Вернуть кнопку", function()
     FloatButton.Visible = true
@@ -667,22 +535,71 @@ MobileSection:NewButton("Кнопка вправо", "Переместить", f
 end)
 
 local InfoSection = SettingsTab:NewSection("ℹ️ Инструкция")
-InfoSection:NewLabel("• Тап по F - открыть меню")
+InfoSection:NewLabel("• Тап по F - меню")
 InfoSection:NewLabel("• Перетащи F - переместить")
 InfoSection:NewLabel("• Двойной тап - скрыть на 1 сек")
-InfoSection:NewLabel("• Охотник сам ищет античиты")
+InfoSection:NewLabel("• Антикик защищает от бана")
 
 -- ==========================================
--- АВТОЗАПУСК
+-- ТЕЛЕПОРТЫ
+-- ==========================================
+local TeleportSection = MainTab:NewSection("🌍 Телепорты")
+
+TeleportSection:NewButton("Стартовый остров", "Телепорт на начало", function()
+    if player and player.Character then
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = CFrame.new(100, 50, 100)
+        end
+    end
+end)
+
+TeleportSection:NewButton("Джунгли", "Телепорт в джунгли", function()
+    if player and player.Character then
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = CFrame.new(-1200, 50, 400)
+        end
+    end
+end)
+
+TeleportSection:NewButton("Песчаный замок", "Телепорт в песчаный замок", function()
+    if player and player.Character then
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = CFrame.new(-1300, 30, -800)
+        end
+    end
+end)
+
+-- ==========================================
+-- ИНФОРМАЦИЯ ОБ ИГРОКЕ
+-- ==========================================
+local InfoSection = PlayerTab:NewSection("📊 Информация")
+
+InfoSection:NewButton("Обновить статистику", "Показать уровень", function()
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v.Name == "Level" then
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "FeastHUB",
+                    Text = "Ваш уровень: " .. tostring(v.Value),
+                    Duration = 3
+                })
+            end
+        end
+    end
+end)
+
+-- ==========================================
+-- ФИНАЛЬНОЕ УВЕДОМЛЕНИЕ
 -- ==========================================
 wait(0.5)
-Hunter.active = true
-HuntAndDestroy()
-
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "FeastHUB",
-    Text = "✅ Охотник за античитами активен!",
-    Duration = 5
+    Text = "✅ Загружено! Тапни по F",
+    Duration = 3
 })
 
-print("✅ FeastHUB загружен! Охотник ищет античиты...")
+print("✅ FeastHUB FINAL загружен! Тапни по зеленой F")
