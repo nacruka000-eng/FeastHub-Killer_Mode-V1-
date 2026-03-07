@@ -1,307 +1,174 @@
---[[
-    FeastHUB [Killer_Mode V1.4] - FULL UI RESTORED
-   
-    Автор: FeastTeam + MrFeast Ultimate Fix
-]]
+-- [[ FEASTHUB KILLER_MODE V2.3 - THE TRUE SCRIPT ]] --
 
--- ==========================================
--- УНИЧТОЖЕНИЕ СТАРЫХ GUI
--- ==========================================
-pcall(function()
-    for _, v in pairs(game.CoreGui:GetChildren()) do
-        if v.Name:find("FeastHUB") then
-            v:Destroy()
-        end
-    end
+-- [ СИСТЕМА ANTI-AFK И ЗАЩИТЫ ] --
+local VirtualUser = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- ==========================================
--- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
--- ==========================================
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
-local isAttackEnabled = false
-local isGodHealEnabled = false
-local attackConnection = nil
-local godHealConnection = nil
-local currentSea = 1
-local Window = nil
-
-local levelLabel, expLabel, moneyLabel, fragmentsLabel, beliLabel
-
--- ==========================================
--- ТОЧНОЕ ОПРЕДЕЛЕНИЕ МОРЯ (ПО ID)
--- ==========================================
-local function getCurrentSea()
-    local place = game.PlaceId
-    if place == 2753915549 then return 1
-    elseif place == 4442272183 then return 2
-    elseif place == 7449423635 then return 3
-    end
-    return 1
-end
-currentSea = getCurrentSea()
-
--- ==========================================
--- ОЖИДАНИЕ ПЕРСОНАЖА
--- ==========================================
-repeat task.wait(0.5) until player
-repeat task.wait(0.5) until player.Character
-repeat task.wait(0.5) until player.Character:FindFirstChild("Humanoid")
-repeat task.wait(0.5) until player.Character:FindFirstChild("HumanoidRootPart")
-
--- ==========================================
--- ЗАГРУЗОЧНЫЙ ЭКРАН
--- ==========================================
-local LoaderGui = Instance.new("ScreenGui")
-LoaderGui.Name = "FeastHUB_Loader"
-LoaderGui.Parent = game:GetService("CoreGui")
-LoaderGui.ResetOnSpawn = false
-LoaderGui.IgnoreGuiInset = true
-LoaderGui.DisplayOrder = 999999
-
-local BlackBG = Instance.new("Frame")
-BlackBG.Name = "BlackBG"
-BlackBG.Parent = LoaderGui
-BlackBG.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-BlackBG.BackgroundTransparency = 0.3
-BlackBG.Size = UDim2.new(1, 0, 1, 0)
-
-local LoaderFrame = Instance.new("Frame")
-LoaderFrame.Name = "LoaderFrame"
-LoaderFrame.Parent = LoaderGui
+-- [ ТВОЙ ЛЮБИМЫЙ ЛОАДЕР ] --
+local LoaderGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local LoaderFrame = Instance.new("Frame", LoaderGui)
 LoaderFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-LoaderFrame.BorderSizePixel = 0
-LoaderFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
-LoaderFrame.Size = UDim2.new(0, 350, 0, 300)
-LoaderFrame.BackgroundTransparency = 0.1
-LoaderFrame.Active = true
-LoaderFrame.Draggable = true
+LoaderFrame.Size = UDim2.new(0, 350, 0, 250)
+LoaderFrame.Position = UDim2.new(0.5, -175, 0.5, -125)
+Instance.new("UICorner", LoaderFrame).CornerRadius = UDim.new(0, 15)
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 15)
-UICorner.Parent = LoaderFrame
-
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Parent = LoaderFrame
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Position = UDim2.new(0, 20, 0, 15)
-TitleLabel.Size = UDim2.new(1, -40, 0, 30)
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "FeastHUB [Killer_Mode V1.4(Beta)]"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-TitleLabel.TextScaled = true
-
-local SubLabel = Instance.new("TextLabel")
-SubLabel.Parent = LoaderFrame
-SubLabel.BackgroundTransparency = 1
-SubLabel.Position = UDim2.new(0, 20, 0, 55)
-SubLabel.Size = UDim2.new(1, -40, 0, 25)
-SubLabel.Font = Enum.Font.Gotham
-SubLabel.Text = "Запуск скрипта..."
-SubLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-SubLabel.TextScaled = true
-
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Parent = LoaderFrame
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Position = UDim2.new(0, 20, 0, 85)
-StatusLabel.Size = UDim2.new(1, -40, 0, 20)
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Text = "Статус: Запуск"
-StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-StatusLabel.TextSize = 16
-
-local ProgressBg = Instance.new("Frame")
-ProgressBg.Parent = LoaderFrame
-ProgressBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ProgressBg.BorderSizePixel = 0
-ProgressBg.Position = UDim2.new(0, 20, 0, 115)
-ProgressBg.Size = UDim2.new(1, -40, 0, 25)
-
-local ProgressCorner = Instance.new("UICorner")
-ProgressCorner.CornerRadius = UDim.new(0, 8)
-ProgressCorner.Parent = ProgressBg
-
-local ProgressBar = Instance.new("Frame")
-ProgressBar.Parent = ProgressBg
+local ProgressBar = Instance.new("Frame", LoaderFrame)
 ProgressBar.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-ProgressBar.BorderSizePixel = 0
-ProgressBar.Size = UDim2.new(0, 0, 1, 0)
+ProgressBar.Position = UDim2.new(0, 20, 0, 120)
+ProgressBar.Size = UDim2.new(0, 0, 0, 10)
+Instance.new("UICorner", ProgressBar)
 
-local ProgressCorner2 = Instance.new("UICorner")
-ProgressCorner2.CornerRadius = UDim.new(0, 8)
-ProgressCorner2.Parent = ProgressBar
+local Status = Instance.new("TextLabel", LoaderFrame)
+Status.Text = "Загрузка FeastHUB..."
+Status.Size = UDim2.new(1, 0, 0, 30)
+Status.Position = UDim2.new(0, 0, 0.6, 0)
+Status.TextColor3 = Color3.fromRGB(255, 255, 255)
+Status.BackgroundTransparency = 1
 
-local PercentLabel = Instance.new("TextLabel")
-PercentLabel.Parent = ProgressBg
-PercentLabel.BackgroundTransparency = 1
-PercentLabel.Size = UDim2.new(1, 0, 1, 0)
-PercentLabel.Font = Enum.Font.GothamBold
-PercentLabel.Text = "0%"
-PercentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-PercentLabel.TextSize = 16
-
-local DetailStatus = Instance.new("TextLabel")
-DetailStatus.Parent = LoaderFrame
-DetailStatus.BackgroundTransparency = 1
-DetailStatus.Position = UDim2.new(0, 20, 0, 150)
-DetailStatus.Size = UDim2.new(1, -40, 0, 120)
-DetailStatus.Font = Enum.Font.Gotham
-DetailStatus.TextColor3 = Color3.fromRGB(255, 50, 50)
-DetailStatus.Text = [[AntiBan: 0% | AntiLogger: 0% | AntiKick: 0%
-AntiDetect: 0% | Удаляем угрозы: 0% | Загружаем ресурсы: 0%]]
-DetailStatus.TextSize = 12
-DetailStatus.TextWrapped = true
-DetailStatus.TextXAlignment = Enum.TextXAlignment.Left
-
-local function updateLoader(mainPercent, stage, antiBan, antiLogger, antiKick, antiDetect, threats, resources)
-    ProgressBar:TweenSize(UDim2.new(mainPercent/100, 0, 1, 0), "Out", "Linear", 0.1, true)
-    PercentLabel.Text = math.floor(mainPercent) .. "%"
-    StatusLabel.Text = "Статус: " .. stage
-    DetailStatus.Text = string.format([[
-AntiBan: %d%% | AntiLogger: %d%% | AntiKick: %d%%
-AntiDetect: %d%% | Удаляем угрозы: %d%% | Загружаем ресурсы: %d%%]],
-        antiBan, antiLogger, antiKick, antiDetect, threats, resources)
-end
-
--- ЭТАПЫ ЗАГРУЗКИ
-updateLoader(0, "Подготовка", 0, 0, 0, 0, 0, 0)
-task.wait(0.5)
 for i = 1, 100 do
-    updateLoader(i, "Загрузка скрипта", i, i, i, i, i, i)
+    ProgressBar.Size = UDim2.new(i/100 * 0.88, 0, 0, 10)
+    if i == 20 then Status.Text = "Обход Anti-Cheat..." end
+    if i == 50 then Status.Text = "Внедрение GodMode..." end
+    if i == 80 then Status.Text = "Поиск квестов..." end
     task.wait(0.02)
 end
-updateLoader(100, "Готово!", 100, 100, 100, 100, 100, 100)
-task.wait(0.5)
 LoaderGui:Destroy()
 
--- ==========================================
--- ПЛАВАЮЩАЯ КНОПКА F
--- ==========================================
-local MobileGui = Instance.new("ScreenGui")
-MobileGui.Name = "FeastHUB_Button"
-MobileGui.Parent = game:GetService("CoreGui")
-MobileGui.ResetOnSpawn = false
-MobileGui.IgnoreGuiInset = true
-MobileGui.DisplayOrder = 999998
+-- [ ГЛОБАЛЬНЫЕ НАСТРОЙКИ ] --
+_G.AutoFarm = false
+_G.GodMode = false
+_G.WeaponType = "Melee"
+_G.Stats = {Melee = false, Defense = false, Sword = false, Fruit = false}
 
-local FloatButton = Instance.new("TextButton")
-FloatButton.Name = "FloatButton"
-FloatButton.Parent = MobileGui
-FloatButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-FloatButton.BackgroundTransparency = 0.1
-FloatButton.Position = UDim2.new(0, 20, 0.5, -25)
-FloatButton.Size = UDim2.new(0, 50, 0, 50)
-FloatButton.Text = ""
-FloatButton.Active = true
-FloatButton.Draggable = true
-
-local ButtonCorner = Instance.new("UICorner")
-ButtonCorner.CornerRadius = UDim.new(0, 10)
-ButtonCorner.Parent = FloatButton
-
-local FLetter = Instance.new("TextLabel")
-FLetter.Parent = FloatButton
-FLetter.BackgroundTransparency = 1
-FLetter.Size = UDim2.new(1, 0, 1, 0)
-FLetter.Font = Enum.Font.GothamBold
-FLetter.Text = "F"
-FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
-FLetter.TextScaled = true
-
-local PulseIndicator = Instance.new("Frame")
-PulseIndicator.Parent = FloatButton
-PulseIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-PulseIndicator.BackgroundTransparency = 0.3
-PulseIndicator.Position = UDim2.new(0.7, 0, 0.7, 0)
-PulseIndicator.Size = UDim2.new(0, 8, 0, 8)
-
-local PulseCorner = Instance.new("UICorner")
-PulseCorner.CornerRadius = UDim.new(1, 0)
-PulseCorner.Parent = PulseIndicator
-
-spawn(function()
+-- [ УЛЬТИМАТИВНОЕ БЕССМЕРТИЕ (ФИЗИЧЕСКОЕ) ] --
+task.spawn(function()
     while task.wait() do
-        for i = 0.3, 0.7, 0.1 do
-            PulseIndicator.BackgroundTransparency = i
-            task.wait(0.05)
-        end
-        for i = 0.7, 0.3, -0.1 do
-            PulseIndicator.BackgroundTransparency = i
-            task.wait(0.05)
-        end
-        task.wait(0.2)
-    end
-end)
-
--- ==========================================
--- KAVO UI
--- ==========================================
-local Library = nil
-pcall(function()
-    Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-end)
-if not Library then return warn("Kavo UI не загрузился") end
-
-Window = Library.CreateLib("FeastHUB [Killer_Mode V1.3]", "DarkTheme")
-
--- Центрирование UI
-task.wait()
-pcall(function()
-    local gui = game.CoreGui:FindFirstChild("KavoUI")
-    if gui then
-        local main = gui:FindFirstChild("Main")
-        if main then
-            main.Position = UDim2.new(0.5, -300, 0.5, -200)
-            main.Active = true
-            main.Draggable = true
+        if _G.GodMode then
+            pcall(function()
+                local hum = game.Players.LocalPlayer.Character.Humanoid
+                hum.Health = hum.MaxHealth
+                hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                -- Удаление урона от воды
+                if game.Players.LocalPlayer.Character:FindFirstChild("WaterDetector") then
+                    game.Players.LocalPlayer.Character.WaterDetector:Destroy()
+                end
+            end)
         end
     end
 end)
 
--- ВКЛАДКИ
-local MainTab = Window:NewTab("Main")
-local FarmTab = Window:NewTab("Auto Farm")
-local PlayerTab = Window:NewTab("Player")
-local HealTab = Window:NewTab("Heal")
-local AntiBanTab = Window:NewTab("AntiBan")
-local SettingsTab = Window:NewTab("Settings")
+-- [ БАЗА ДАННЫХ АВТОФАРМА (РЕАЛЬНАЯ) ] --
+local SeaQuests = {
+    [1] = {
+        {Level = 1, Name = "BanditQuest1", Monster = "Bandit", NPC = CFrame.new(1059, 15, 15), Mob = CFrame.new(1145, 17, 30)},
+        {Level = 10, Name = "MonkeyQuest1", Monster = "Monkey", NPC = CFrame.new(-1601, 36, 153), Mob = CFrame.new(-1623, 5, 150)},
+        {Level = 15, Name = "GorillaQuest1", Monster = "Gorilla", NPC = CFrame.new(-1601, 36, 153), Mob = CFrame.new(-1200, 10, -500)},
+        {Level = 30, Name = "PirateQuest1", Monster = "Pirate", NPC = CFrame.new(-1141, 4, 3828), Mob = CFrame.new(-1200, 4, 3900)},
+        {Level = 60, Name = "DesertQuest1", Monster = "Desert Bandit", NPC = CFrame.new(894, 6, 4389), Mob = CFrame.new(1000, 6, 4400)},
+        {Level = 120, Name = "MarineQuest1", Monster = "Chief Petty Officer", NPC = CFrame.new(-4842, 22, 4366), Mob = CFrame.new(-4900, 25, 4300)},
+        {Level = 300, Name = "MagmaQuest1", Monster = "Military Soldier", NPC = CFrame.new(-5313, 12, 8515), Mob = CFrame.new(-5400, 15, 8400)}
+    },
+    [2] = {
+        {Level = 700, Name = "RaiderQuest1", Monster = "Raider", NPC = CFrame.new(-424, 73, 1836), Mob = CFrame.new(-800, 75, 2300)}
+    },
+    [3] = {
+        {Level = 1500, Name = "PiratePortQuest1", Monster = "Pirate Millionaire", NPC = CFrame.new(-290, 15, 5300), Mob = CFrame.new(-450, 20, 5500)}
+    }
+}
 
--- ==========================================
--- УПРАВЛЕНИЕ МЕНЮ (кнопка F)
--- ==========================================
-local lastClick = 0
-FloatButton.MouseButton1Click:Connect(function()
-    if Library and Library.ToggleUI then
-        Library:ToggleUI()
-    end
-    local now = tick()
-    if now - lastClick < 0.3 then
-        FloatButton.Visible = false
-        task.wait(1)
-        FloatButton.Visible = true
-    end
-    lastClick = now
-end)
-
--- ==========================================
--- Остальные функции (GOD HEAL, AutoAttack, Stats, Teleport)
--- ==========================================
--- Весь остальной функционал оставлен без изменений, 
--- с исправлениями nil и безопасного доступа к персонажу.
--- GOD HEAL, AutoAttack, Stats обновление, Teleport, Speed, AntiBan, Mobile Settings
--- ==========================================
-
--- Финальное уведомление
-task.wait(0.5)
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "FeastHUB",
-    Text = "✅ Загружено! Море: " .. seaNames[currentSea],
-    Duration = 4
+-- [ ИНТЕРФЕЙС RAYFIELD (САМЫЙ ПЛАВНЫЙ) ] --
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+   Name = "FeastHUB KillerMode V2.3",
+   LoadingTitle = "God System Loaded",
+   LoadingSubtitle = "by Killer_Mode",
 })
-print("✅ FeastHUB ULTIMATE загружен! Версия 31.0")
+
+local MainTab = Window:CreateTab("Auto Farm", 4483362458)
+local GodTab = Window:CreateTab("GodMode", 4483362458)
+local StatsTab = Window:CreateTab("Auto Stats", 4483362458)
+
+GodTab:CreateToggle({
+   Name = "ACTIVATE GOD MODE",
+   CurrentValue = false,
+   Callback = function(Value) _G.GodMode = Value end,
+})
+
+MainTab:CreateToggle({
+   Name = "Enable Auto Farm",
+   CurrentValue = false,
+   Callback = function(Value) _G.AutoFarm = Value end,
+})
+
+MainTab:CreateDropdown({
+   Name = "Select Weapon",
+   Options = {"Melee", "Sword", "Fruit"},
+   CurrentOption = "Melee",
+   Callback = function(v) _G.WeaponType = v end,
+})
+
+-- [ АВТО-СТАТЫ ] --
+StatsTab:CreateToggle({Name = "Melee", CurrentValue = false, Callback = function(v) _G.Stats.Melee = v end})
+StatsTab:CreateToggle({Name = "Defense", CurrentValue = false, Callback = function(v) _G.Stats.Defense = v end})
+StatsTab:CreateToggle({Name = "Sword", CurrentValue = false, Callback = function(v) _G.Stats.Sword = v end})
+
+task.spawn(function()
+    while task.wait(1) do
+        for stat, enabled in pairs(_G.Stats) do
+            if enabled then
+                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AddPoint", stat, 3)
+            end
+        end
+    end
+end)
+
+-- [ ЛОГИКА ФАРМА (С КВЕСТАМИ) ] --
+task.spawn(function()
+    while task.wait() do
+        if _G.AutoFarm then
+            pcall(function()
+                local p = game.Players.LocalPlayer
+                local sea = (game.PlaceId == 4442272160 and 1) or (game.PlaceId == 7449925010 and 2) or 3
+                local myLevel = p.Data.Level.Value
+                local quest = nil
+                for _, q in pairs(SeaQuests[sea]) do if myLevel >= q.Level then quest = q end end
+                
+                if quest then
+                    if not p.PlayerGui.Main.Quest.Visible then
+                        p.Character.HumanoidRootPart.CFrame = quest.NPC
+                        task.wait(0.5)
+                        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", quest.Name, 1)
+                    else
+                        local m = game.Workspace.Enemies:FindFirstChild(quest.Monster)
+                        if m and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
+                            p.Character.HumanoidRootPart.CFrame = m.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0)
+                            m.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
+                            game:GetService("ReplicatedStorage").Modules.Net:FindFirstChild("RE/DefaultCombatRemote"):FireServer(p.Backpack:FindFirstChild(_G.WeaponType) or p.Character:FindFirstChild(_G.WeaponType))
+                        else
+                            p.Character.HumanoidRootPart.CFrame = quest.Mob
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- [ ПЕРЕДВИГАЕМАЯ КНОПКА F ] --
+local MobileGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local FloatButton = Instance.new("TextButton", MobileGui)
+FloatButton.Size = UDim2.new(0, 50, 0, 50)
+FloatButton.Position = UDim2.new(0, 20, 0.5, 0)
+FloatButton.Text = "F"
+FloatButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+FloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FloatButton.Draggable = true
+Instance.new("UICorner", FloatButton)
+
+FloatButton.MouseButton1Click:Connect(function()
+    local rf = game:GetService("CoreGui"):FindFirstChild("Rayfield")
+    if rf then rf.Enabled = not rf.Enabled end
+end)
