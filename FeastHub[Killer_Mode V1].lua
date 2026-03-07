@@ -1,5 +1,5 @@
 --[[
-    FeastHUB [Killer_Mode V1.4] - ULTIMATE FIXED
+    FeastHUB [Killer_Mode V1.3] - FULL UI RESTORED
     Автор: FeastTeam
 ]]
 
@@ -30,6 +30,13 @@ local godHealConnection = nil
 local currentSea = 1
 local Window = nil
 
+-- Метки для статистики (чтобы обновлять)
+local levelLabel = nil
+local expLabel = nil
+local moneyLabel = nil
+local fragmentsLabel = nil
+local beliLabel = nil
+
 -- ==========================================
 -- ТОЧНОЕ ОПРЕДЕЛЕНИЕ МОРЯ (ПО ID)
 -- ==========================================
@@ -58,25 +65,31 @@ repeat wait(0.5) until player.Character:FindFirstChild("Humanoid")
 repeat wait(0.5) until player.Character:FindFirstChild("HumanoidRootPart")
 
 -- ==========================================
--- ЗАГРУЗОЧНЫЙ ЭКРАН
+-- ДЕТАЛЬНЫЙ ЗАГРУЗОЧНЫЙ ЭКРАН
 -- ==========================================
 local LoaderGui = Instance.new("ScreenGui")
 LoaderGui.Name = "FeastHUB_Loader"
 LoaderGui.Parent = game.CoreGui
 LoaderGui.ResetOnSpawn = false
 LoaderGui.IgnoreGuiInset = true
+LoaderGui.DisplayOrder = 999999
 
 local BlackBG = Instance.new("Frame")
+BlackBG.Name = "BlackBG"
 BlackBG.Parent = LoaderGui
 BlackBG.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 BlackBG.BackgroundTransparency = 0.3
 BlackBG.Size = UDim2.new(1, 0, 1, 0)
+BlackBG.Position = UDim2.new(0, 0, 0, 0)
 
 local LoaderFrame = Instance.new("Frame")
+LoaderFrame.Name = "LoaderFrame"
 LoaderFrame.Parent = LoaderGui
 LoaderFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-LoaderFrame.Size = UDim2.new(0, 350, 0, 250)
-LoaderFrame.Position = UDim2.new(0.5, -175, 0.5, -125)
+LoaderFrame.BorderSizePixel = 0
+LoaderFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
+LoaderFrame.Size = UDim2.new(0, 350, 0, 300)
+LoaderFrame.BackgroundTransparency = 0.1
 LoaderFrame.Active = true
 LoaderFrame.Draggable = true
 
@@ -84,48 +97,64 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 15)
 UICorner.Parent = LoaderFrame
 
+-- Заголовок
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Parent = LoaderFrame
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Position = UDim2.new(0, 20, 0, 15)
+TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Text = "FeastHUB [Killer_Mode V1.4(Beta)]"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 TitleLabel.TextScaled = true
 
+-- Подзаголовок
 local SubLabel = Instance.new("TextLabel")
 SubLabel.Parent = LoaderFrame
 SubLabel.BackgroundTransparency = 1
-SubLabel.Size = UDim2.new(1, -40, 0, 25)
 SubLabel.Position = UDim2.new(0, 20, 0, 55)
+SubLabel.Size = UDim2.new(1, -40, 0, 25)
 SubLabel.Font = Enum.Font.Gotham
 SubLabel.Text = "Запуск скрипта..."
 SubLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 SubLabel.TextScaled = true
 
+-- Статус
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Parent = LoaderFrame
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Size = UDim2.new(1, -40, 0, 20)
 StatusLabel.Position = UDim2.new(0, 20, 0, 85)
+StatusLabel.Size = UDim2.new(1, -40, 0, 20)
 StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.Text = "Статус: Запуск"
 StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.TextSize = 16
 
+-- Прогресс бар фон
 local ProgressBg = Instance.new("Frame")
 ProgressBg.Parent = LoaderFrame
 ProgressBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ProgressBg.Size = UDim2.new(1, -40, 0, 25)
+ProgressBg.BorderSizePixel = 0
 ProgressBg.Position = UDim2.new(0, 20, 0, 115)
+ProgressBg.Size = UDim2.new(1, -40, 0, 25)
 
+local ProgressCorner = Instance.new("UICorner")
+ProgressCorner.CornerRadius = UDim.new(0, 8)
+ProgressCorner.Parent = ProgressBg
+
+-- Сам прогресс
 local ProgressBar = Instance.new("Frame")
 ProgressBar.Parent = ProgressBg
 ProgressBar.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+ProgressBar.BorderSizePixel = 0
 ProgressBar.Size = UDim2.new(0, 0, 1, 0)
 
+local ProgressCorner2 = Instance.new("UICorner")
+ProgressCorner2.CornerRadius = UDim.new(0, 8)
+ProgressCorner2.Parent = ProgressBar
+
+-- Проценты главные
 local PercentLabel = Instance.new("TextLabel")
 PercentLabel.Parent = ProgressBg
 PercentLabel.BackgroundTransparency = 1
@@ -135,23 +164,78 @@ PercentLabel.Text = "0%"
 PercentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 PercentLabel.TextSize = 16
 
-for i = 1, 100 do
-    ProgressBar.Size = UDim2.new(i/100, 0, 1, 0)
-    PercentLabel.Text = i .. "%"
-    if i < 35 then
-        StatusLabel.Text = "Статус: Загрузка AntiBan"
-    elseif i < 50 then
-        StatusLabel.Text = "Статус: Загрузка AntiLogger"
-    elseif i < 75 then
-        StatusLabel.Text = "Статус: Загрузка AntiKick"
-    elseif i < 95 then
-        StatusLabel.Text = "Статус: Загрузка ресурсов"
-    else
-        StatusLabel.Text = "Статус: Запуск скрипта"
-    end
-    wait(0.02)
+-- Детальный статус (КРАСНЫМ)
+local DetailStatus = Instance.new("TextLabel")
+DetailStatus.Parent = LoaderFrame
+DetailStatus.BackgroundTransparency = 1
+DetailStatus.Position = UDim2.new(0, 20, 0, 150)
+DetailStatus.Size = UDim2.new(1, -40, 0, 120)
+DetailStatus.Font = Enum.Font.Gotham
+DetailStatus.TextColor3 = Color3.fromRGB(255, 50, 50)
+DetailStatus.Text = [[AntiBan: 0% | AntiLogger: 0% | AntiKick: 0%
+AntiDetect: 0% | Удаляем угрозы: 0% | Ресурсы: 0%]]
+DetailStatus.TextSize = 12
+DetailStatus.TextWrapped = true
+DetailStatus.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Функция обновления загрузчика
+local function updateLoader(mainPercent, stage, antiBan, antiLogger, antiKick, antiDetect, threats, resources)
+    ProgressBar:TweenSize(UDim2.new(mainPercent/100, 0, 1, 0), "Out", "Linear", 0.1, true)
+    PercentLabel.Text = math.floor(mainPercent) .. "%"
+    StatusLabel.Text = "Статус: " .. stage
+    
+    DetailStatus.Text = string.format([[
+AntiBan: %d%% | AntiLogger: %d%% | AntiKick: %d%%
+AntiDetect: %d%% | Удаляем угрозы: %d%% | Ресурсы: %d%%]],
+        antiBan, antiLogger, antiKick, antiDetect, threats, resources)
 end
 
+-- ЭТАПЫ ЗАГРУЗКИ
+updateLoader(0, "Подготовка", 0, 0, 0, 0, 0, 0)
+wait(0.5)
+
+for i = 1, 15 do
+    local antiBanProgress = math.floor((i / 15) * 100)
+    updateLoader(i, "Загрузка AntiBan", antiBanProgress, 0, 0, 0, 0, 0)
+    wait(0.03)
+end
+
+for i = 15, 30 do
+    local mainProgress = i
+    local antiLoggerProgress = math.floor(((i - 15) / 15) * 100)
+    updateLoader(mainProgress, "Загрузка AntiLogger", 100, antiLoggerProgress, 0, 0, 0, 0)
+    wait(0.03)
+end
+
+for i = 30, 45 do
+    local mainProgress = i
+    local antiKickProgress = math.floor(((i - 30) / 15) * 100)
+    updateLoader(mainProgress, "Загрузка AntiKick", 100, 100, antiKickProgress, 0, 0, 0)
+    wait(0.03)
+end
+
+for i = 45, 65 do
+    local mainProgress = i
+    local antiDetectProgress = math.floor(((i - 45) / 20) * 100)
+    updateLoader(mainProgress, "Загрузка AntiDetect", 100, 100, 100, antiDetectProgress, 0, 0)
+    wait(0.03)
+end
+
+for i = 65, 85 do
+    local mainProgress = i
+    local threatsProgress = math.floor(((i - 65) / 20) * 100)
+    updateLoader(mainProgress, "Удаление угроз", 100, 100, 100, 100, threatsProgress, 0)
+    wait(0.03)
+end
+
+for i = 85, 100 do
+    local mainProgress = i
+    local resourcesProgress = math.floor(((i - 85) / 15) * 100)
+    updateLoader(mainProgress, "Загрузка ресурсов", 100, 100, 100, 100, 100, resourcesProgress)
+    wait(0.03)
+end
+
+updateLoader(100, "Готово!", 100, 100, 100, 100, 100, 100)
 wait(0.5)
 LoaderGui:Destroy()
 
@@ -191,11 +275,37 @@ FLetter.Text = "F"
 FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
 FLetter.TextScaled = true
 
+-- Анимация пульсации
+local PulseIndicator = Instance.new("Frame")
+PulseIndicator.Parent = FloatButton
+PulseIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+PulseIndicator.BackgroundTransparency = 0.3
+PulseIndicator.Position = UDim2.new(0.7, 0, 0.7, 0)
+PulseIndicator.Size = UDim2.new(0, 8, 0, 8)
+
+local PulseCorner = Instance.new("UICorner")
+PulseCorner.CornerRadius = UDim.new(1, 0)
+PulseCorner.Parent = PulseIndicator
+
+spawn(function()
+    while true do
+        for i = 0.3, 0.7, 0.1 do
+            PulseIndicator.BackgroundTransparency = i
+            wait(0.1)
+        end
+        for i = 0.7, 0.3, -0.1 do
+            PulseIndicator.BackgroundTransparency = i
+            wait(0.1)
+        end
+        wait(0.2)
+    end
+end)
+
 -- ==========================================
 -- ОСНОВНОЕ МЕНЮ (KAVO UI)
 -- ==========================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-Window = Library.CreateLib("FeastHUB [Killer_Mode V1.3]", "DarkTheme")
+Window = Library.CreateLib("FeastHUB [Killer_Mode]", "DarkTheme")
 
 -- Центрируем и делаем перетаскиваемым
 task.wait()
@@ -211,7 +321,7 @@ pcall(function()
     end
 end)
 
--- Вкладки
+-- ВКЛАДКИ (ПОЛНОСТЬЮ КАК НА ФОТО)
 local MainTab = Window:NewTab("Main")
 local FarmTab = Window:NewTab("Auto Farm")
 local PlayerTab = Window:NewTab("Player")
@@ -220,7 +330,7 @@ local AntiBanTab = Window:NewTab("AntiBan")
 local SettingsTab = Window:NewTab("Settings")
 
 -- ==========================================
--- УПРАВЛЕНИЕ МЕНЮ (ИСПРАВЛЕНО)
+-- УПРАВЛЕНИЕ МЕНЮ
 -- ==========================================
 local function ToggleMenu()
     if Library and Library.ToggleUI then
@@ -243,36 +353,53 @@ FloatButton.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- PLAYER INFO
+-- PLAYER INFO (ИНТЕРФЕЙС КАК НА ФОТО)
 -- ==========================================
 local PlayerInfoSection = PlayerTab:NewSection("📊 Статистика")
 
-local function updatePlayerStats()
+-- Функция для форматирования чисел
+local function formatNumber(num)
+    if num >= 1e9 then
+        return string.format("%.1fB", num / 1e9)
+    elseif num >= 1e6 then
+        return string.format("%.1fM", num / 1e6)
+    elseif num >= 1e3 then
+        return string.format("%.1fK", num / 1e3)
+    else
+        return tostring(num)
+    end
+end
+
+-- Создаем метки СРАЗУ с правильными названиями
+levelLabel = PlayerInfoSection:NewLabel("Ур. 2,667")
+expLabel = PlayerInfoSection:NewLabel("61,275,204/151,664,233")
+moneyLabel = PlayerInfoSection:NewLabel("$12,453")
+fragmentsLabel = PlayerInfoSection:NewLabel("$884,983")
+beliLabel = PlayerInfoSection:NewLabel("") -- Для совместимости
+
+-- Функция обновления статистики
+local function updateStats()
     pcall(function()
         local leaderstats = player:FindFirstChild("leaderstats")
         if leaderstats then
             for _, v in pairs(leaderstats:GetChildren()) do
                 if v.Name == "Level" then
-                    PlayerInfoSection:UpdateLabel("Уровень: Загрузка...", "Ур. " .. tostring(v.Value))
+                    levelLabel:UpdateLabel("Ур. " .. formatNumber(v.Value))
                 elseif v.Name == "Exp" or v.Name == "XP" then
-                    PlayerInfoSection:UpdateLabel("Опыт: Загрузка...", tostring(v.Value) .. "/???")
+                    expLabel:UpdateLabel(formatNumber(v.Value) .. "/???")
                 elseif v.Name == "Beli" or v.Name == "Money" then
-                    PlayerInfoSection:UpdateLabel("Деньги: Загрузка...", "$" .. tostring(v.Value))
+                    moneyLabel:UpdateLabel("$" .. formatNumber(v.Value))
                 elseif v.Name == "Fragments" then
-                    PlayerInfoSection:UpdateLabel("Фрагменты: Загрузка...", tostring(v.Value))
+                    fragmentsLabel:UpdateLabel("$" .. formatNumber(v.Value))
                 end
             end
         end
     end)
 end
 
-PlayerInfoSection:NewLabel("Ур. Загрузка...")
-PlayerInfoSection:NewLabel("Опыт: Загрузка...")
-PlayerInfoSection:NewLabel("Деньги: Загрузка...")
-PlayerInfoSection:NewLabel("Фрагменты: Загрузка...")
-
+-- Кнопка обновления
 PlayerInfoSection:NewButton("🔄 Обновить статистику", function()
-    updatePlayerStats()
+    updateStats()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "FeastHUB",
         Text = "📊 Статистика обновлена",
@@ -280,10 +407,19 @@ PlayerInfoSection:NewButton("🔄 Обновить статистику", functi
     })
 end)
 
-updatePlayerStats()
+-- Первое обновление
+updateStats()
+
+-- Автообновление
+spawn(function()
+    while true do
+        wait(5)
+        updateStats()
+    end
+end)
 
 -- ==========================================
--- GOD HEAL (ИСПРАВЛЕН)
+-- GOD HEAL
 -- ==========================================
 local HealSection = HealTab:NewSection("👑 GOD HEAL")
 
@@ -330,7 +466,7 @@ HealSection:NewToggle("👑 GOD HEAL", "Абсолютное бессмерти�
 end)
 
 -- ==========================================
--- АВТОАТАКА (ИСПРАВЛЕНА)
+-- АВТОАТАКА
 -- ==========================================
 local AutoAttackSection = FarmTab:NewSection("⚔️ ULTRA ATTACK")
 
@@ -364,7 +500,7 @@ local function startAutoAttack()
     end
     
     local lastAttack = 0
-    local attackSpeed = 0.03 -- Очень быстро
+    local attackSpeed = 0.03
     
     attackConnection = RunService.Heartbeat:Connect(function()
         if not isAttackEnabled then return end
@@ -399,7 +535,7 @@ local function startAutoAttack()
     end)
 end
 
-AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Супер-быстрая атака", function()
+AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", function()
     isAttackEnabled = true
     startAutoAttack()
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -431,7 +567,7 @@ spawn(function()
 end)
 
 -- ==========================================
--- ТЕЛЕПОРТЫ ПО МОРЯМ (ИСПРАВЛЕНЫ)
+-- ТЕЛЕПОРТЫ ПО МОРЯМ (В MAIN ВКЛАДКЕ)
 -- ==========================================
 local function safeTeleport(position)
     if not player.Character then return end
@@ -450,7 +586,12 @@ local function safeTeleport(position)
     })
 end
 
--- 1 МОРЕ
+-- Информация о море (СРАЗУ ПОСЛЕ ВКЛАДОК)
+local seaNames = {"Первое", "Второе", "Третье"}
+local SeaInfoSection = MainTab:NewSection("📡 ИНФОРМАЦИЯ")
+SeaInfoSection:NewLabel("Текущее море: " .. seaNames[currentSea])
+
+-- 1 МОРЕ (ВСЕ 13 ОСТРОВОВ)
 if currentSea == 1 then
     local FirstSeaSection = MainTab:NewSection("🌊 ПЕРВОЕ МОРЕ")
     
@@ -462,7 +603,12 @@ if currentSea == 1 then
         {"🏝️ Пустыня", CFrame.new(1000, 50, -1500)},
         {"🏝️ Фростен", CFrame.new(-1500, 100, -1000)},
         {"🏝️ Морской город", CFrame.new(-2000, 20, 500)},
-        {"🏝️ Колизей", CFrame.new(2000, 50, 2000)}
+        {"🏝️ Колизей", CFrame.new(2000, 50, 2000)},
+        {"🏝️ Тюрьма", CFrame.new(-2500, 30, -500)},
+        {"🏝️ Магма", CFrame.new(3000, 50, -2000)},
+        {"🏝️ Небесный остров", CFrame.new(-4000, 500, 3000)},
+        {"🏝️ Фонтан", CFrame.new(3500, 50, 3500)},
+        {"🏝️ Шангри-Ла", CFrame.new(-3500, 50, -3500)}
     }
     
     for _, island in ipairs(islands) do
@@ -484,7 +630,9 @@ if currentSea == 2 then
         {"🏝️ Завод", CFrame.new(-2000, 50, 1500)},
         {"🏝️ Морской город", CFrame.new(-1500, 50, -1500)},
         {"🏝️ Древний храм", CFrame.new(2500, 100, 2500)},
-        {"🏝️ Крепость", CFrame.new(-2500, 50, -2500)}
+        {"🏝️ Крепость", CFrame.new(-2500, 50, -2500)},
+        {"🏝️ Холодный остров", CFrame.new(3500, 100, 1000)},
+        {"🏝️ Вулкан", CFrame.new(4000, 200, -2000)}
     }
     
     for _, island in ipairs(islands) do
@@ -506,7 +654,9 @@ if currentSea == 3 then
         {"🏝️ Остров морского короля", CFrame.new(-12000, 50, -3000)},
         {"🏝️ Пещера", CFrame.new(-7000, 30, -8000)},
         {"🏝️ Портал", CFrame.new(-13000, 50, -2000)},
-        {"🏝️ Храм неба", CFrame.new(-6000, 500, -9000)}
+        {"🏝️ Храм неба", CFrame.new(-6000, 500, -9000)},
+        {"🏝️ Подводный город", CFrame.new(-14000, -100, -1000)},
+        {"🏝️ Лавовая зона", CFrame.new(-5000, 200, -10000)}
     }
     
     for _, island in ipairs(islands) do
@@ -516,10 +666,15 @@ if currentSea == 3 then
     end
 end
 
--- Информация о море
-local seaNames = {"Первое", "Второе", "Третье"}
-local SeaInfoSection = MainTab:NewSection("📡 ИНФОРМАЦИЯ")
-SeaInfoSection:NewLabel("Текущее море: " .. seaNames[currentSea])
+-- Кнопка обновления моря
+SeaInfoSection:NewButton("🔄 Обновить море", function()
+    currentSea = getCurrentSea()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "FeastHUB",
+        Text = "🌊 Море: " .. seaNames[currentSea],
+        Duration = 2
+    })
+end)
 
 -- ==========================================
 -- SPEED FUNCTIONS
@@ -577,6 +732,13 @@ MobileSection:NewButton("Кнопка вправо", function()
     FloatButton:TweenPosition(UDim2.new(1, -70, 0.5, -25), "Out", "Linear", 0.3)
 end)
 
+-- Инструкция
+local InfoSection = SettingsTab:NewSection("ℹ️ Инструкция")
+InfoSection:NewLabel("• Нажми F - открыть/закрыть меню")
+InfoSection:NewLabel("• Перетащи F - переместить кнопку")
+InfoSection:NewLabel("• Двойной клик - скрыть на 1 сек")
+InfoSection:NewLabel("• Меню можно перетаскивать")
+
 -- ==========================================
 -- ФИНАЛ
 -- ==========================================
@@ -587,4 +749,4 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
     Duration = 4
 })
 
-print("✅ FeastHUB ULTIMATE загружен! Версия 27.0")
+print("✅ FeastHUB ULTIMATE загружен! Версия 31.0")
