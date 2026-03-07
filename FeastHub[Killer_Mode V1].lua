@@ -1,6 +1,5 @@
 --[[
-    FeastHUB [Killer_Mode V1.3] - FULLY WORKING
-    Версия: 25.0 (ВСЕ ИСПРАВЛЕНО)
+    FeastHUB [Killer_Mode V1.4] - ULTIMATE FIXED
     Автор: FeastTeam
 ]]
 
@@ -24,7 +23,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 -- Переменные состояния
-local isMenuVisible = true
 local isAttackEnabled = false
 local isGodHealEnabled = false
 local attackConnection = nil
@@ -33,7 +31,26 @@ local currentSea = 1
 local Window = nil
 
 -- ==========================================
--- ОЖИДАНИЕ ЗАГРУЗКИ ПЕРСОНАЖА (УПРОЩЕНО)
+-- ТОЧНОЕ ОПРЕДЕЛЕНИЕ МОРЯ (ПО ID)
+-- ==========================================
+local function getCurrentSea()
+    local place = game.PlaceId
+    
+    if place == 2753915549 then
+        return 1
+    elseif place == 4442272183 then
+        return 2
+    elseif place == 7449423635 then
+        return 3
+    end
+    
+    return 1
+end
+
+currentSea = getCurrentSea()
+
+-- ==========================================
+-- ОЖИДАНИЕ ЗАГРУЗКИ ПЕРСОНАЖА
 -- ==========================================
 repeat wait(0.5) until player
 repeat wait(0.5) until player.Character
@@ -41,25 +58,7 @@ repeat wait(0.5) until player.Character:FindFirstChild("Humanoid")
 repeat wait(0.5) until player.Character:FindFirstChild("HumanoidRootPart")
 
 -- ==========================================
--- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ МОРЯ (ИСПРАВЛЕНА)
--- ==========================================
-local function getCurrentSea()
-    if not player or not player.Character then return 1 end
-    local root = player.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return 1 end
-    
-    local y = math.abs(root.Position.Y)
-    if y < 1000 then
-        return 1
-    elseif y < 5000 then
-        return 2
-    else
-        return 3
-    end
-end
-
--- ==========================================
--- ЗАГРУЗОЧНЫЙ ЭКРАН (ТВОЙ ДИЗАЙН)
+-- ЗАГРУЗОЧНЫЙ ЭКРАН
 -- ==========================================
 local LoaderGui = Instance.new("ScreenGui")
 LoaderGui.Name = "FeastHUB_Loader"
@@ -91,7 +90,7 @@ TitleLabel.BackgroundTransparency = 1
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Position = UDim2.new(0, 20, 0, 15)
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "FeastHUB [Killer_Mode V1.3(Fix)]"
+TitleLabel.Text = "FeastHUB [Killer_Mode V1.4(Beta)]"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 TitleLabel.TextScaled = true
 
@@ -136,7 +135,6 @@ PercentLabel.Text = "0%"
 PercentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 PercentLabel.TextSize = 16
 
--- Простая загрузка
 for i = 1, 100 do
     ProgressBar.Size = UDim2.new(i/100, 0, 1, 0)
     PercentLabel.Text = i .. "%"
@@ -158,7 +156,7 @@ wait(0.5)
 LoaderGui:Destroy()
 
 -- ==========================================
--- ПЛАВАЮЩАЯ КНОПКА F (ИСПРАВЛЕНА)
+-- ПЛАВАЮЩАЯ КНОПКА F
 -- ==========================================
 wait(0.2)
 
@@ -169,7 +167,6 @@ MobileGui.ResetOnSpawn = false
 MobileGui.IgnoreGuiInset = true
 MobileGui.DisplayOrder = 999998
 
--- ИСПРАВЛЕНО: Использую TextButton вместо Frame
 local FloatButton = Instance.new("TextButton")
 FloatButton.Name = "FloatButton"
 FloatButton.Parent = MobileGui
@@ -195,13 +192,26 @@ FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
 FLetter.TextScaled = true
 
 -- ==========================================
--- ОСНОВНОЕ МЕНЮ (ТВОЙ ДИЗАЙН)
+-- ОСНОВНОЕ МЕНЮ (KAVO UI)
 -- ==========================================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 Window = Library.CreateLib("FeastHUB [Killer_Mode V1.3]", "DarkTheme")
-Window.Draggable = true
 
--- ТВОИ ВКЛАДКИ (ВОССТАНОВЛЕНЫ)
+-- Центрируем и делаем перетаскиваемым
+task.wait()
+pcall(function()
+    local gui = game.CoreGui:FindFirstChild("KavoUI")
+    if gui then
+        local main = gui:FindFirstChild("Main")
+        if main then
+            main.Position = UDim2.new(0.5, -300, 0.5, -200)
+            main.Active = true
+            main.Draggable = true
+        end
+    end
+end)
+
+-- Вкладки
 local MainTab = Window:NewTab("Main")
 local FarmTab = Window:NewTab("Auto Farm")
 local PlayerTab = Window:NewTab("Player")
@@ -212,16 +222,13 @@ local SettingsTab = Window:NewTab("Settings")
 -- ==========================================
 -- УПРАВЛЕНИЕ МЕНЮ (ИСПРАВЛЕНО)
 -- ==========================================
-FloatButton.MouseButton1Click:Connect(function()
-    isMenuVisible = not isMenuVisible
-    if isMenuVisible then
-        Window:ToggleUI()
-        FLetter.TextColor3 = Color3.fromRGB(0, 255, 0)
-    else
-        Window:ToggleUI()
-        FLetter.TextColor3 = Color3.fromRGB(255, 255, 255)
+local function ToggleMenu()
+    if Library and Library.ToggleUI then
+        Library:ToggleUI()
     end
-end)
+end
+
+FloatButton.MouseButton1Click:Connect(ToggleMenu)
 
 -- Двойной клик для скрытия
 local lastClick = 0
@@ -236,11 +243,10 @@ FloatButton.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- PLAYER INFO (ТВОЙ ДИЗАЙН)
+-- PLAYER INFO
 -- ==========================================
 local PlayerInfoSection = PlayerTab:NewSection("📊 Статистика")
 
--- Функция обновления статистики
 local function updatePlayerStats()
     pcall(function()
         local leaderstats = player:FindFirstChild("leaderstats")
@@ -265,7 +271,7 @@ PlayerInfoSection:NewLabel("Опыт: Загрузка...")
 PlayerInfoSection:NewLabel("Деньги: Загрузка...")
 PlayerInfoSection:NewLabel("Фрагменты: Загрузка...")
 
-PlayerInfoSection:NewButton("🔄 Обновить статистику", "Обновить данные игрока", function()
+PlayerInfoSection:NewButton("🔄 Обновить статистику", function()
     updatePlayerStats()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "FeastHUB",
@@ -277,7 +283,7 @@ end)
 updatePlayerStats()
 
 -- ==========================================
--- GOD HEAL (УПРОЩЕН И РАБОТАЕТ)
+-- GOD HEAL (ИСПРАВЛЕН)
 -- ==========================================
 local HealSection = HealTab:NewSection("👑 GOD HEAL")
 
@@ -286,18 +292,27 @@ local function startGodHeal()
         godHealConnection:Disconnect()
     end
     
-    godHealConnection = RunService.Heartbeat:Connect(function()
+    godHealConnection = RunService.RenderStepped:Connect(function()
         if not isGodHealEnabled then return end
-        if not player or not player.Character then return end
+        if not player.Character then return end
         
         local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid and humanoid.Health < humanoid.MaxHealth then
-            humanoid.Health = humanoid.MaxHealth
+        if humanoid then
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            
+            if humanoid.Health < humanoid.MaxHealth then
+                humanoid.Health = humanoid.MaxHealth
+            end
+            
+            humanoid.MaxHealth = math.huge
+            humanoid.Health = math.huge
         end
     end)
 end
 
-HealSection:NewToggle("👑 GOD HEAL", "Мгновенное восстановление здоровья", function(state)
+HealSection:NewToggle("👑 GOD HEAL", "Абсолютное бессмертие", function(state)
     isGodHealEnabled = state
     if state then
         startGodHeal()
@@ -315,35 +330,32 @@ HealSection:NewToggle("👑 GOD HEAL", "Мгновенное восстанов�
 end)
 
 -- ==========================================
--- АВТОАТАКА (ИСПРАВЛЕНА И РАБОТАЕТ)
+-- АВТОАТАКА (ИСПРАВЛЕНА)
 -- ==========================================
-local AutoAttackSection = FarmTab:NewSection("⚔️ AUTO ATTACK")
+local AutoAttackSection = FarmTab:NewSection("⚔️ ULTRA ATTACK")
 
-local function findTarget()
-    if not player or not player.Character then return nil end
+local function findAllTargets()
+    local targets = {}
+    if not player.Character then return targets end
     
     local root = player.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return nil end
+    if not root then return targets end
     
-    local closestTarget = nil
-    local closestDist = 50
-    
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj ~= player.Character then
-            local hum = obj:FindFirstChildOfClass("Humanoid")
-            local objRoot = obj:FindFirstChild("HumanoidRootPart")
+    for _, v in pairs(workspace:GetChildren()) do
+        if v:IsA("Model") and v ~= player.Character then
+            local hum = v:FindFirstChildOfClass("Humanoid")
+            local hrp = v:FindFirstChild("HumanoidRootPart")
             
-            if hum and hum.Health > 0 and objRoot then
-                local dist = (objRoot.Position - root.Position).Magnitude
-                if dist < closestDist then
-                    closestDist = dist
-                    closestTarget = obj
+            if hum and hrp and hum.Health > 0 then
+                local dist = (root.Position - hrp.Position).Magnitude
+                if dist <= 50 then
+                    table.insert(targets, hrp)
                 end
             end
         end
     end
     
-    return closestTarget
+    return targets
 end
 
 local function startAutoAttack()
@@ -351,41 +363,53 @@ local function startAutoAttack()
         attackConnection:Disconnect()
     end
     
+    local lastAttack = 0
+    local attackSpeed = 0.03 -- Очень быстро
+    
     attackConnection = RunService.Heartbeat:Connect(function()
         if not isAttackEnabled then return end
         
-        local target = findTarget()
-        if not target then return end
+        local currentTime = tick()
+        if currentTime - lastAttack < attackSpeed then
+            return
+        end
+        
+        local targets = findAllTargets()
+        if #targets == 0 then return end
         
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         local tool = player.Character:FindFirstChildOfClass("Tool")
-        local targetRoot = target:FindFirstChild("HumanoidRootPart")
         
-        if root and targetRoot then
-            root.CFrame = CFrame.lookAt(root.Position, targetRoot.Position)
-            
-            if (targetRoot.Position - root.Position).Magnitude > 8 then
-                root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 4)
-            end
-            
-            if tool then
-                tool:Activate()
-            end
+        if not root then return end
+        
+        local target = targets[1]
+        root.CFrame = CFrame.lookAt(root.Position, target.Position)
+        
+        if (target.Position - root.Position).Magnitude > 8 then
+            root.CFrame = target.CFrame * CFrame.new(0, 0, 4)
+        end
+        
+        if tool then
+            tool:Activate()
+            tool:Activate()
+            tool:Activate()
+            tool:Activate()
+            lastAttack = currentTime
         end
     end)
 end
 
-AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Атака всех целей в радиусе 50", function()
+AutoAttackSection:NewButton("▶ ВКЛЮЧИТЬ", "Супер-быстрая атака", function()
     isAttackEnabled = true
     startAutoAttack()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "FeastHUB",
-        Text = "⚔️ Auto Attack включен",
+        Text = "⚔️ Ultra Attack включен",
         Duration = 3
     })
 end)
 
-AutoAttackSection:NewButton("⏹ ВЫКЛЮЧИТЬ", "Остановить", function()
+AutoAttackSection:NewButton("⏹ ВЫКЛЮЧИТЬ", function()
     isAttackEnabled = false
     if attackConnection then
         attackConnection:Disconnect()
@@ -407,21 +431,23 @@ spawn(function()
 end)
 
 -- ==========================================
--- ТЕЛЕПОРТЫ ПО МОРЯМ (С АВТООПРЕДЕЛЕНИЕМ)
+-- ТЕЛЕПОРТЫ ПО МОРЯМ (ИСПРАВЛЕНЫ)
 -- ==========================================
-currentSea = getCurrentSea()
-
-local function safeTeleport(pos)
-    if not player or not player.Character then return end
+local function safeTeleport(position)
+    if not player.Character then return end
+    
     local root = player.Character:FindFirstChild("HumanoidRootPart")
-    if root then
-        root.CFrame = pos
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "FeastHUB",
-            Text = "🌍 Телепорт выполнен",
-            Duration = 1
-        })
+    if not root then
+        player.Character:WaitForChild("HumanoidRootPart")
+        root = player.Character:FindFirstChild("HumanoidRootPart")
     end
+    
+    root.CFrame = position
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "FeastHUB",
+        Text = "🌍 Телепорт выполнен",
+        Duration = 1
+    })
 end
 
 -- 1 МОРЕ
@@ -440,7 +466,7 @@ if currentSea == 1 then
     }
     
     for _, island in ipairs(islands) do
-        FirstSeaSection:NewButton(island[1], "Телепорт", function()
+        FirstSeaSection:NewButton(island[1], function()
             safeTeleport(island[2])
         end)
     end
@@ -462,7 +488,7 @@ if currentSea == 2 then
     }
     
     for _, island in ipairs(islands) do
-        SecondSeaSection:NewButton(island[1], "Телепорт", function()
+        SecondSeaSection:NewButton(island[1], function()
             safeTeleport(island[2])
         end)
     end
@@ -484,7 +510,7 @@ if currentSea == 3 then
     }
     
     for _, island in ipairs(islands) do
-        ThirdSeaSection:NewButton(island[1], "Телепорт", function()
+        ThirdSeaSection:NewButton(island[1], function()
             safeTeleport(island[2])
         end)
     end
@@ -494,15 +520,9 @@ end
 local seaNames = {"Первое", "Второе", "Третье"}
 local SeaInfoSection = MainTab:NewSection("📡 ИНФОРМАЦИЯ")
 SeaInfoSection:NewLabel("Текущее море: " .. seaNames[currentSea])
-SeaInfoSection:NewButton("🔄 Обновить", "Обновить острова", function()
-    -- Перезагружаем страницу для обновления
-    Window:ToggleUI()
-    wait(0.1)
-    Window:ToggleUI()
-end)
 
 -- ==========================================
--- SPEED FUNCTIONS (ИСПРАВЛЕНЫ)
+-- SPEED FUNCTIONS
 -- ==========================================
 local SpeedSection = PlayerTab:NewSection("⚡ Speed Control")
 
@@ -537,23 +557,23 @@ AntiBanSection:NewLabel("✓ AntiCheat активен")
 -- ==========================================
 local MobileSection = SettingsTab:NewSection("📱 Управление")
 
-MobileSection:NewButton("Показать кнопку F", "Вернуть кнопку", function()
+MobileSection:NewButton("Показать кнопку F", function()
     FloatButton.Visible = true
 end)
 
-MobileSection:NewButton("Скрыть кнопку F", "Спрятать", function()
+MobileSection:NewButton("Скрыть кнопку F", function()
     FloatButton.Visible = false
 end)
 
-MobileSection:NewButton("Кнопка в центр", "Переместить", function()
+MobileSection:NewButton("Кнопка в центр", function()
     FloatButton:TweenPosition(UDim2.new(0.5, -25, 0.5, -25), "Out", "Linear", 0.3)
 end)
 
-MobileSection:NewButton("Кнопка влево", "Переместить", function()
+MobileSection:NewButton("Кнопка влево", function()
     FloatButton:TweenPosition(UDim2.new(0, 20, 0.5, -25), "Out", "Linear", 0.3)
 end)
 
-MobileSection:NewButton("Кнопка вправо", "Переместить", function()
+MobileSection:NewButton("Кнопка вправо", function()
     FloatButton:TweenPosition(UDim2.new(1, -70, 0.5, -25), "Out", "Linear", 0.3)
 end)
 
@@ -566,3 +586,5 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
     Text = "✅ Загружено! Море: " .. seaNames[currentSea],
     Duration = 4
 })
+
+print("✅ FeastHUB ULTIMATE загружен! Версия 27.0")
